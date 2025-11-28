@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Post, UploadedFile, UsePipes } from '@nestjs/common';
+import { Body, Controller, Get, Post, UploadedFile, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDTO } from './dtos/create-user.dto';
 import { UserLoginDTO } from './dtos/user-login.dto';
@@ -6,6 +6,19 @@ import { UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from './cloudinary.service';
 import { FileValidationPipe } from './pipes/file-validation.pipe';
+import { JwtAccessGuard, JwtRefreshGuard } from './guards/jwt.guard';
+import { RoleGuard } from './guards/role.guard';
+import { Roles } from './decorators/role.decorator';
+import { UserDocument, UserRole } from '../user/schema/user.schema';
+import { GetUser } from './decorators/get-user.decorator';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserDocument
+    }
+  }
+}
 
 @Controller('auth')
 export class AuthController {
@@ -20,16 +33,7 @@ export class AuthController {
     @UploadedFile(FileValidationPipe) file: Express.Multer.File,
     @Body() body: CreateUserDTO,
   ) {
-    const uploadFileResult = file ? await this.cloudinaryService.uploadImage(file) : null
-
-    const user = await this.authService.signUp({
-      ...body,
-      avatar: uploadFileResult?.secure_url ?? null
-    })
-    return {
-      message: "User created successfully",
-      user
-    }
+    return await this.authService.signUp(body, file)
   }
 
   @Post("/signin")
@@ -41,4 +45,21 @@ export class AuthController {
       refreshToken
     }
   }
+
+
+  @Get("/refresh-token")
+  @UseGuards(JwtRefreshGuard) // attaches req.user = {user, refreshToken}
+  async refreshUserToken(@GetUser() userInfo: { user: UserDocument, refreshToken: string }) {
+    const { user, refreshToken } = userInfo;
+
+    const { accessToken, refreshToken: newRefreshToken } = await this.authService.refreshToken(user, refreshToken)
+
+    return {
+      message: "Token Refresh Successfully",
+      accessToken,
+      refreshToken:newRefreshToken
+    }
+  }
+
+
 }
