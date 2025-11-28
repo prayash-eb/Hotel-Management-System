@@ -1,6 +1,7 @@
 import { Schema, Prop, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
 import bcrypt from "bcryptjs";
+import { compareHash, hashToken } from "../../utils/hash";
 
 export enum UserRole {
     CUSTOMER = "customer",
@@ -123,13 +124,16 @@ UserSchema.methods.comparePassword = async function (plain: string): Promise<boo
 };
 
 // Add session (max 3 active)
-UserSchema.methods.addSession = async function (accessTokenHash: string, refreshTokenHash: string) {
+UserSchema.methods.addSession = async function (accessToken: string, refreshToken: string) {
     if (this.session.length >= 3) {
         this.session.shift(); // remove oldest
     }
+    const accessTokenHash = hashToken(accessToken);
+    const refreshTokenHash = hashToken(refreshToken)
     this.session.push({ accessTokenHash, refreshTokenHash });
     await this.save();
 };
+
 
 // Remove a single session by token hash
 UserSchema.methods.removeSession = async function (tokenHash: string) {
@@ -144,3 +148,20 @@ UserSchema.methods.clearAllSession = async function () {
     this.session = [];
     await this.save();
 };
+
+
+// validate accessToken exists in the database
+UserSchema.methods.isAccessTokenValid = async function (accessToken: string): Promise<boolean> {
+
+    return this.session.some((session: UserSession) => {
+        return compareHash(accessToken, session.accessTokenHash)
+    })
+}
+
+// Validate refreshToken exists in the database
+UserSchema.methods.isRefreshTokenValid = async function (refreshToken: string): Promise<boolean> {
+
+    return this.session.some((session: UserSession) => {
+        return compareHash(refreshToken, session.refreshTokenHash)
+    })
+}  
