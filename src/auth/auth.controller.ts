@@ -45,8 +45,6 @@ export class AuthController {
       refreshToken
     }
   }
-
-
   @Get("/refresh-token")
   @UseGuards(JwtRefreshGuard) // attaches req.user = {user, refreshToken}
   async refreshUserToken(@GetUser() userInfo: { user: UserDocument, refreshToken: string }) {
