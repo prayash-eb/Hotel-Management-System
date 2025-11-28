@@ -25,9 +25,12 @@ export interface IUserAddress {
 
 export interface IUserDocumentMethods {
     comparePassword(plain: string): Promise<boolean>;
-    addSession(accessTokenHash: string, refreshTokenHash: string): Promise<void>;
-    removeSession(tokenHash: string): Promise<void>;
+    addSession(accessToken: string, refreshToken: string): Promise<void>;
+    removeSession(token: string): Promise<void>;
     clearAllSession(): Promise<void>;
+    isAccessTokenValid(accessToken: string): Promise<boolean>;
+    isRefreshTokenValid(accessToken: string): Promise<boolean>;
+
 }
 
 @Schema({
@@ -136,7 +139,8 @@ UserSchema.methods.addSession = async function (accessToken: string, refreshToke
 
 
 // Remove a single session by token hash
-UserSchema.methods.removeSession = async function (tokenHash: string) {
+UserSchema.methods.removeSession = async function (token: string) {
+    const tokenHash = hashToken(token)
     this.session = this.session.filter(
         (s: UserSession) => s.accessTokenHash !== tokenHash && s.refreshTokenHash !== tokenHash
     );
