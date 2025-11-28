@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schema/user.schema';
 import { Model } from 'mongoose';
-import { CreateUserDTO } from './dtos/create-user.dto';
+import { CreateUserDTO } from '../auth/dtos/create-user.dto';
 import { UpdateUserDTO } from './dtos/update-user.dto';
 
 @Injectable()
@@ -14,12 +14,11 @@ export class UserService {
             return await this.userModel.create({
                 ...createUserDto
             })
-
         } catch (error) {
             throw new Error(error)
         }
     }
-    async findByEmail(email: string): Promise<User | null> {
+    async findByEmail(email: string): Promise<UserDocument | null> {
         const user = await this.userModel.findOne({ email })
         if (!user) return null;
         return user;
