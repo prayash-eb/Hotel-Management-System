@@ -7,7 +7,7 @@ import databaseConfig from './configs/database.config';
 import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import fileUploadConfig from './auth/config/file-upload.config';
+import fileUploadConfig from './auth/configs/file-upload.config';
 
 @Module({
   imports: [
