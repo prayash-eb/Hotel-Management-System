@@ -9,8 +9,8 @@ import { JwtAccessStrategy, JwtRefreshStrategy } from './strategy/jwt.strategy';
 
 @Module({
   imports: [
-    UserModule, 
-    PassportModule, 
+    UserModule,
+    PassportModule,
     JwtModule,
   ],
   controllers: [AuthController],
@@ -20,5 +20,6 @@ import { JwtAccessStrategy, JwtRefreshStrategy } from './strategy/jwt.strategy';
     JwtRefreshStrategy,
     CloudinaryService
   ],
+  exports: [CloudinaryService]
 })
 export class AuthModule { }

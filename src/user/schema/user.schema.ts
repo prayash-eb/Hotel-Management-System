@@ -57,6 +57,10 @@ export class User {
     @Prop({ type: String })
     phoneNo: string;
 
+    @Prop({ type: Boolean })
+    isEmailVerified: boolean
+
+
     @Prop({ type: String })
     avatar: string;
 
@@ -74,16 +78,16 @@ export class User {
     address: IUserAddress[];
 
     @Prop({ type: String })
-    emailVerificationToken: string;
+    emailVerificationToken: string | undefined;
 
     @Prop({ type: Date })
-    emailVerificationTokenExpiry: Date;
+    emailVerificationTokenExpiry: Date | undefined;
 
     @Prop({ type: String })
-    resetPasswordToken: string;
+    resetPasswordToken: string | undefined;
 
     @Prop({ type: Date })
-    resetPasswordTokenExpiry: Date;
+    resetPasswordTokenExpiry: Date | undefined;
 
     @Prop({
         type: String,

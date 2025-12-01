@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { CreateUserDTO } from './dtos/create-user.dto';
 import { UserLoginDTO } from './dtos/user-login.dto';
@@ -6,8 +6,10 @@ import { JwtService } from '@nestjs/jwt';
 import { UserDocument } from '../user/schema/user.schema';
 import { ConfigService } from '@nestjs/config';
 import { CloudinaryService } from './cloudinary.service';
-import { RefreshTokenDto } from './dtos/refreshtoken.dto';
-
+import { randomBytes } from 'crypto';
+import { hashToken } from '../utils/hash';
+import { MailerService } from '@nestjs-modules/mailer';
+import { generateEmailVerificationTemplate } from './email-templates/email-verification';
 
 @Injectable()
 export class AuthService {
@@ -15,7 +17,8 @@ export class AuthService {
         private readonly configService: ConfigService,
         private readonly userService: UserService,
         private readonly cloudinaryService: CloudinaryService,
-        private readonly jwtService: JwtService
+        private readonly jwtService: JwtService,
+        private mailService: MailerService
     ) { }
 
     async signUp(createUserDto: CreateUserDTO, file: Express.Multer.File) {
@@ -30,6 +33,8 @@ export class AuthService {
             ...createUserDto,
             avatar: uploadFileResult?.secure_url ?? null
         })
+
+        await this.sendVerificationLink(user)
         return {
             message: "User created successfully",
             user
@@ -58,6 +63,7 @@ export class AuthService {
         }
     }
 
+
     async refreshToken(user: UserDocument, refreshToken: string) {
 
         // remove the exisiting access and refresh token both
@@ -74,6 +80,61 @@ export class AuthService {
         }
     }
 
+    async logout(user: UserDocument, accessToken: string) {
+        const isAccessTokenValid = user.isAccessTokenValid(accessToken);
+        if (!isAccessTokenValid) {
+            throw new UnauthorizedException("Invalid Access Token")
+        }
+        await user.removeSession(accessToken)
+    }
+
+
+    async logoutAll(user: UserDocument, accessToken: string) {
+        const isAccessTokenValid = user.isAccessTokenValid(accessToken);
+        if (!isAccessTokenValid) {
+            throw new UnauthorizedException("Invalid Access Token")
+        }
+        await user.clearAllSession()
+    }
+
+    async sendVerificationLink(user: UserDocument) {
+        const verificationToken = randomBytes(64).toString("hex")
+        const verificationTokenHash = hashToken(verificationToken)
+
+        user.emailVerificationToken = verificationTokenHash;
+        user.emailVerificationTokenExpiry = new Date(Date.now() + 5 * 60 * 60 * 1000)
+
+        const verificationTemplateHTML = generateEmailVerificationTemplate({
+            name: user.name,
+            email: user.email,
+            verificationUrl: `${process.env.NEST_BASE_URL}/auth/verify-email?token=${verificationToken}`
+        })
+
+        await this.mailService.sendMail({
+            to: user.email,
+            subject: "Email Verification",
+            html: verificationTemplateHTML
+        })
+        await user.save()
+
+    }
+
+    async verifyEmail(verificationToken: string) {
+
+        const user = await this.userService.findByEmailVerificationToken(verificationToken)
+
+        if (!user) {
+            throw new BadRequestException("Invalid or expired verification token");
+        }
+
+        // 3. Mark email as verified
+        user.isEmailVerified = true;
+        user.emailVerificationToken = undefined;
+        user.emailVerificationTokenExpiry = undefined;
+
+        // 4. Save changes
+        await user.save();
+    }
 
     getAccessToken(user: UserDocument) {
         const { _id, email, role, name } = user;
@@ -84,9 +145,10 @@ export class AuthService {
             role,
             name
         }
+        const expiryMs = parseInt(this.configService.getOrThrow<string>("JWT_ACCESS_TOKEN_EXPIRY_MS"));
         return this.jwtService.sign(tokenPayload, {
             secret: this.configService.getOrThrow<string>("JWT_ACCESS_TOKEN_SECRET"),
-            expiresIn: `${parseInt(this.configService.getOrThrow<string>("JWT_ACCESS_TOKEN_EXPIRY_MS"))}`
+            expiresIn: Math.floor(expiryMs / 1000)
         })
     }
 
@@ -97,9 +159,10 @@ export class AuthService {
             id: _id.toHexString(),
             email,
         }
+        const expiryMs = parseInt(this.configService.getOrThrow<string>("JWT_REFRESH_TOKEN_EXPIRY_MS"))
         return this.jwtService.sign(tokenPayload, {
             secret: this.configService.getOrThrow<string>("JWT_REFRESH_TOKEN_SECRET"),
-            expiresIn: `${parseInt(this.configService.getOrThrow<string>("JWT_REFRESH_TOKEN_EXPIRY_MS"))}`
+            expiresIn: Math.floor(expiryMs / 1000)
         })
     }
 }

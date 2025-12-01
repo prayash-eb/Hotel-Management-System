@@ -1,8 +1,12 @@
-import { Body, Controller, Param } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, NotFoundException, Param, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
-import { Get, Post, Patch, Delete } from '@nestjs/common';
+import { Get, Patch, Delete } from '@nestjs/common';
 import { UpdateUserDTO } from './dtos/update-user.dto';
 import { ParseObjectIdPipe } from '@nestjs/mongoose';
+import { FileValidationPipe } from '../auth/pipes/file-validation.pipe';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import { type UserDocument } from './schema/user.schema';
 
 @Controller('user')
 export class UserController {
@@ -15,16 +19,34 @@ export class UserController {
 
   @Get(":id")
   async findUserById(@Param("id", ParseObjectIdPipe) id: string) {
-    return await this.userService.findById(id)
+    const user = await this.userService.findById(id)
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    return user
   }
 
-  @Patch(":id")
-  async updateUserById(@Param("id", ParseObjectIdPipe) id: string, @Body() body: UpdateUserDTO) {
-    return await this.userService.update(id, body)
+  @Patch()
+  async updateUserById(@GetUser() user: UserDocument, @Body() body: UpdateUserDTO) {
+    const updatedUser = await this.userService.update(user._id.toHexString(), body)
+    return updatedUser;
   }
 
-  @Delete(":id")
-  async removeUserById(@Param("id", ParseObjectIdPipe) id: string) {
-    return await this.userService.remove(id)
+  @Patch("/avatar")
+  @UseInterceptors(FileInterceptor("avatar"))
+  async updateUserAvatar(
+    @UploadedFile(FileValidationPipe) file: Express.Multer.File,
+    @GetUser() user: UserDocument
+  ) {
+    const updatedUser = await this.userService.updateProfile(user._id.toHexString(), file)
+  }
+
+  @Delete()
+  async removeUserById(@GetUser() user: UserDocument) {
+    const deletedUser = await this.userService.remove(user._id.toHexString())
+    return {
+      message: "User deleted successfully",
+      id: deletedUser._id
+    }
   }
 }

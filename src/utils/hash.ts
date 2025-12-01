@@ -1,8 +1,16 @@
 import crypto from "node:crypto"
 
+function getTokenHashSecret(): string {
+    const secret = process.env.TOKEN_HASH_SECRET;
+    if (!secret) {
+        throw new Error("TOKEN_HASH_SECRET is missing")
+    }
+    return secret;
+}
+
 export function hashToken(token: string) {
     return crypto
-        .createHmac("sha256", process.env.TOKEN_HASH_SECRET!)
+        .createHmac("sha256", getTokenHashSecret())
         .update(token)
         .digest("hex")
 }

@@ -8,6 +8,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import fileUploadConfig from './auth/configs/file-upload.config';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 @Module({
   imports: [
@@ -40,16 +41,34 @@ import fileUploadConfig from './auth/configs/file-upload.config';
       }
     }),
     JwtModule.registerAsync({
-      imports:[ConfigModule],
-      inject:[ConfigService],
-      useFactory:(configService:ConfigService)=>{
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
         return {
-          secret:configService.getOrThrow("JWT_ACCESS_TOKEN_SECRET"),
-          signOptions:{
-            expiresIn:parseInt(configService.getOrThrow("JWT_ACCESS_TOKEN_EXPIRY_MS"))
+          secret: configService.getOrThrow("JWT_ACCESS_TOKEN_SECRET"),
+          signOptions: {
+            expiresIn: parseInt(configService.getOrThrow("JWT_ACCESS_TOKEN_EXPIRY_MS"))
           }
         }
       }
+    }),
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        transport: {
+          host: config.get('MAIL_HOST'),
+          port: config.get<number>('MAIL_PORT'),
+          secure: false, // true for 465, false for other ports
+          auth: {
+            user: config.get('MAIL_USER'),
+            pass: config.get('MAIL_PASS'),
+          },
+        },
+        defaults: {
+          from: config.getOrThrow<string>("MAIL_FROM")
+        }
+      })
     }),
     UserModule,
     AuthModule
