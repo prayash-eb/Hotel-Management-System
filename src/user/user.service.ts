@@ -4,7 +4,7 @@ import { IUserAddress, User, UserDocument } from './schema/user.schema';
 import { Model } from 'mongoose';
 import { CreateUserDTO } from '../auth/dtos/create-user.dto';
 import { UpdateUserDTO } from './dtos/update-user.dto';
-import { CloudinaryService } from '../auth/cloudinary.service';
+import { CloudinaryService } from '../common/cloudinary/cloudinary.service';
 import { hashToken } from '../utils/hash';
 
 @Injectable()
@@ -98,5 +98,11 @@ export class UserService {
             }
         })
 
+    }
+    async findByResetToken(tokenHash: string): Promise<UserDocument | null> {
+        return await this.userModel.findOne({
+            resetPasswordToken: tokenHash,
+            resetPasswordTokenExpiry: { $gt: new Date() }
+        });
     }
 }

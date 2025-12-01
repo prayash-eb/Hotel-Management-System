@@ -7,9 +7,14 @@ import databaseConfig from './configs/database.config';
 import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import fileUploadConfig from './auth/configs/file-upload.config';
+import fileUploadConfig from './configs/file-upload.config';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HotelModule } from './hotel/hotel.module';
+import { MenuModule } from './menu/menu.module';
+import { CommonModule } from './common/common.module';
+import { ReviewModule } from './review/review.module';
+import { LoggingModule } from './common/logging/logging.module';
+import { OrderModule } from './order/order.module';
 
 @Module({
   imports: [
@@ -73,7 +78,12 @@ import { HotelModule } from './hotel/hotel.module';
     }),
     UserModule,
     AuthModule,
-    HotelModule
+    HotelModule,
+    MenuModule,
+    CommonModule,
+    ReviewModule,
+    LoggingModule,
+    OrderModule
   ],
   controllers: [AppController],
   providers: [AppService],

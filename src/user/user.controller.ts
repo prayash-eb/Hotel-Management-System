@@ -3,18 +3,28 @@ import { UserService } from './user.service';
 import { Get, Patch, Delete } from '@nestjs/common';
 import { UpdateUserDTO } from './dtos/update-user.dto';
 import { ParseObjectIdPipe } from '@nestjs/mongoose';
-import { FileValidationPipe } from '../auth/pipes/file-validation.pipe';
+import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { GetUser } from '../auth/decorators/get-user.decorator';
-import { IUserAddress, type UserDocument } from './schema/user.schema';
+import { IUserAddress, type UserDocument, UserRole } from './schema/user.schema';
 import { UserLocationDTO } from './dtos/update-user-location.dto';
 import { JwtAccessGuard } from '../auth/guards/jwt.guard';
+import { Roles } from '../auth/decorators/role.decorator';
+import { RoleGuard } from '../auth/guards/role.guard';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
+  @Get("me")
+  @UseGuards(JwtAccessGuard)
+  getMe(@GetUser() user: UserDocument) {
+    return user;
+  }
+
   @Get()
+  @Roles(UserRole.ADMIN)
+  @UseGuards(JwtAccessGuard, RoleGuard)
   async findAllUsers() {
     return await this.userService.findAll();
   }

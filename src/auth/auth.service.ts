@@ -5,11 +5,13 @@ import { UserLoginDTO } from './dtos/user-login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { UserDocument } from '../user/schema/user.schema';
 import { ConfigService } from '@nestjs/config';
-import { CloudinaryService } from './cloudinary.service';
+import { CloudinaryService } from '../common/cloudinary/cloudinary.service';
 import { randomBytes } from 'crypto';
 import { hashToken } from '../utils/hash';
 import { MailerService } from '@nestjs-modules/mailer';
 import { generateEmailVerificationTemplate } from './email-templates/email-verification';
+import { generateResetPasswordTemplate } from './email-templates/reset-password';
+import { ChangePasswordDTO, ForgotPasswordDTO, ResetPasswordDTO } from './dtos/password.dto';
 
 @Injectable()
 export class AuthService {
@@ -165,5 +167,67 @@ export class AuthService {
             secret: this.configService.getOrThrow<string>("JWT_REFRESH_TOKEN_SECRET"),
             expiresIn: Math.floor(expiryMs / 1000)
         })
+    }
+
+    async forgotPassword(forgotPasswordDto: ForgotPasswordDTO) {
+        const user = await this.userService.findByEmail(forgotPasswordDto.email);
+        if (!user) {
+            // We don't want to reveal if user exists or not
+            return { message: "If user with given email exists, you will receive a password reset link" };
+        }
+
+        const resetToken = randomBytes(32).toString("hex");
+        const resetTokenHash = hashToken(resetToken);
+
+        user.resetPasswordToken = resetTokenHash;
+        user.resetPasswordTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        await user.save();
+
+        const resetUrl = `${process.env.NEST_BASE_URL}/auth/reset-password?token=${resetToken}`;
+        const emailHtml = generateResetPasswordTemplate({
+            name: user.name,
+            resetUrl
+        });
+
+        await this.mailService.sendMail({
+            to: user.email,
+            subject: "Password Reset Request",
+            html: emailHtml
+        });
+
+        return { message: "If user with given email exists, you will receive a password reset link" };
+    }
+
+    async resetPassword(resetPasswordDto: ResetPasswordDTO) {
+        const tokenHash = hashToken(resetPasswordDto.token);
+        const user = await this.userService.findByResetToken(tokenHash);
+
+        if (!user) {
+            throw new BadRequestException("Invalid or expired reset token");
+        }
+
+        user.password = resetPasswordDto.newPassword; // Will be hashed by pre-save hook
+        user.resetPasswordToken = undefined;
+        user.resetPasswordTokenExpiry = undefined;
+        
+        // Optional: Invalidate all existing sessions for security
+        await user.clearAllSession();
+
+        await user.save();
+
+        return { message: "Password reset successfully" };
+    }
+
+    async changePassword(user: UserDocument, changePasswordDto: ChangePasswordDTO) {
+        const isPasswordMatch = await user.comparePassword(changePasswordDto.oldPassword);
+        if (!isPasswordMatch) {
+            throw new BadRequestException("Invalid old password");
+        }
+
+        user.password = changePasswordDto.newPassword; // Will be hashed by pre-save hook
+        await user.save();
+
+        return { message: "Password changed successfully" };
     }
 }

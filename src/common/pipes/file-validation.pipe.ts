@@ -7,11 +7,21 @@ export class FileValidationPipe implements PipeTransform {
         private readonly configService: ConfigService
     ) { }
 
-    transform(file: Express.Multer.File, metadata: ArgumentMetadata) {
-        const errors: string[] = [];
-        if (!file) {
-            return file
+    transform(value: Express.Multer.File | Express.Multer.File[], metadata: ArgumentMetadata) {
+        if (!value) {
+            return value;
         }
+
+        if (Array.isArray(value)) {
+            value.forEach(file => this.validateFile(file));
+            return value;
+        }
+
+        return this.validateFile(value);
+    }
+
+    private validateFile(file: Express.Multer.File) {
+        const errors: string[] = [];
         const fileUploadConfig = this.configService.get("fileupload")
 
         const allowedMimeTypes: string[] = fileUploadConfig.allowedMimeTypes

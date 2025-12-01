@@ -19,11 +19,11 @@ export class Media {
 // Embedded Location Schema
 @Schema({ _id: false })
 export class Location {
-    @Prop({ required: true })
-    longitude: number;
+    @Prop({ type: String, enum: ['Point'], required: true, default: 'Point' })
+    type: string;
 
-    @Prop({ required: true })
-    latitude: number;
+    @Prop({ type: [Number], required: true })
+    coordinates: number[];
 }
 
 // Embedded Address Schema
@@ -85,6 +85,9 @@ export class Hotel {
     @Prop({ required: true, min: 0, max: 5, default: 0 })
     rating: number;
 
+    @Prop({ default: 0 })
+    totalReviews: number;
+
     @Prop({ type: [TopReview], default: [] })
     topReviews: TopReview[];
 
@@ -96,5 +99,5 @@ export const HotelSchema = SchemaFactory.createForClass(Hotel);
 
 // Optional: Add compound indexes for fast queries
 HotelSchema.index({ ownerId: 1, hotelName: 1 });
-HotelSchema.index({ 'address.location.city': 1 });
+HotelSchema.index({ 'address.location': '2dsphere' });
 HotelSchema.index({ rating: -1 });
