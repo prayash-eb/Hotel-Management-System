@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { User, UserDocument } from './schema/user.schema';
+import { IUserAddress, User, UserDocument } from './schema/user.schema';
 import { Model } from 'mongoose';
 import { CreateUserDTO } from '../auth/dtos/create-user.dto';
 import { UpdateUserDTO } from './dtos/update-user.dto';
@@ -79,7 +79,16 @@ export class UserService {
         }
         return deletedUser
     }
-
+    async updateAddress(id: string, address: IUserAddress) {
+        return await this.userModel.findByIdAndUpdate(id, {
+            $set: {
+                address: address
+            }
+        }, {
+            new: true,
+            runValidators: true
+        })
+    }
     async findByEmailVerificationToken(verificationToken: string): Promise<UserDocument | null> {
         const verificationTokenHash = hashToken(verificationToken);
         return await this.userModel.findOne({
@@ -88,6 +97,6 @@ export class UserService {
                 $gt: new Date(Date.now())
             }
         })
-     
+
     }
 }

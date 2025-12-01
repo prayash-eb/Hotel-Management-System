@@ -9,6 +9,7 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import fileUploadConfig from './auth/configs/file-upload.config';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { HotelModule } from './hotel/hotel.module';
 
 @Module({
   imports: [
@@ -71,7 +72,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
       })
     }),
     UserModule,
-    AuthModule
+    AuthModule,
+    HotelModule
   ],
   controllers: [AppController],
   providers: [AppService],

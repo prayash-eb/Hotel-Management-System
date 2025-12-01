@@ -70,8 +70,6 @@ export class AuthController {
   }
 
   @Get("/logoutall")
-  @Roles(UserRole.ADMIN)
-  @UseGuards(RoleGuard)
   @UseGuards(JwtAccessGuard)
   async logoutAllDevices(@GetUser() user: UserDocument, @Req() req: Request) {
     const authHeader = req.headers.authorization;
@@ -99,6 +97,5 @@ export class AuthController {
       message: "Email Verified Successfully"
     }
   }
-
 
 }

@@ -98,6 +98,10 @@ export class AuthService {
     }
 
     async sendVerificationLink(user: UserDocument) {
+        const isUserEmailVerified = user.isEmailVerified;
+        if(isUserEmailVerified){
+            throw new BadRequestException("Email already verified")
+        }
         const verificationToken = randomBytes(64).toString("hex")
         const verificationTokenHash = hashToken(verificationToken)
 
@@ -127,12 +131,9 @@ export class AuthService {
             throw new BadRequestException("Invalid or expired verification token");
         }
 
-        // 3. Mark email as verified
         user.isEmailVerified = true;
         user.emailVerificationToken = undefined;
         user.emailVerificationTokenExpiry = undefined;
-
-        // 4. Save changes
         await user.save();
     }
 
