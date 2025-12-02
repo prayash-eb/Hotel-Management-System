@@ -11,12 +11,12 @@ import { ParseObjectIdPipe } from '@nestjs/mongoose';
 import { UpdateMenuItemDTO } from './dto/update-menu-item.dto';
 import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CreateCategoryDTO, UpdateCategoryDTO } from './dto/category.dto';
+import { CreateCategoryArrayDTO, CreateCategoryDTO, UpdateCategoryDTO } from './dto/category.dto';
 import { MenuItemDTO } from './dto/create-menu.dto';
 
 @Controller('menu')
 export class MenuController {
-  constructor(private readonly menuService: MenuService) {}
+  constructor(private readonly menuService: MenuService) { }
 
   @Post(':hotelId')
   @Roles(UserRole.HOTEL_OWNER)
@@ -111,9 +111,9 @@ export class MenuController {
   addCategory(
     @Param('menuId', ParseObjectIdPipe) menuId: string,
     @GetUser() user: UserDocument,
-    @Body() createCategoryDto: CreateCategoryDTO,
+    @Body() createCategoryDtoArray: CreateCategoryArrayDTO,
   ) {
-    return this.menuService.addCategory(menuId, user._id.toHexString(), createCategoryDto);
+    return this.menuService.addCategory(menuId, user._id.toHexString(), createCategoryDtoArray.categories);
   }
 
   @Patch(':menuId/category/:categoryId')

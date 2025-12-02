@@ -53,7 +53,7 @@ export class UserService {
         let avatarUrl: string | undefined;
 
         if (file) {
-            const uploadResult = await this.cloudinaryService.uploadImage(file);
+            const uploadResult = await this.cloudinaryService.uploadMedia(file, "profile_images");
             avatarUrl = uploadResult.secure_url;
         }
 

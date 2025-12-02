@@ -1,9 +1,10 @@
-import { IsOptional, IsString, IsNumber, Min, IsEnum } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min, IsEnum, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class HotelQueryDTO {
     @IsOptional()
     @IsString()
+    @IsNotEmpty()
     search?: string;
 
     @IsOptional()
@@ -25,9 +26,11 @@ export class HotelQueryDTO {
     @IsOptional()
     @Type(() => Number)
     @IsNumber()
+    @IsNotEmpty()
     latitude?: number;
 
     @IsOptional()
+    @IsNotEmpty()
     @Type(() => Number)
     @IsNumber()
     longitude?: number;

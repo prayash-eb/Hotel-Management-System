@@ -23,8 +23,8 @@ export class UserController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN)
-  @UseGuards(JwtAccessGuard, RoleGuard)
+  // @Roles(UserRole.ADMIN)
+  // @UseGuards(JwtAccessGuard, RoleGuard)
   async findAllUsers() {
     return await this.userService.findAll();
   }

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail, Length, IsEnum, IsPhoneNumber } from "class-validator";
+import { IsString, IsOptional, IsEmail, Length, IsEnum, IsPhoneNumber, IsNotEmpty } from "class-validator";
 import { UserRole } from "../../user/schema/user.schema";
 
 export class CreateUserDTO {
@@ -16,11 +16,16 @@ export class CreateUserDTO {
     @IsString()
     @IsPhoneNumber("NP")
     @IsOptional()
+    @IsNotEmpty()
     phoneNo?: string;
 
     @IsString()
     @IsOptional()
     avatar?: string;
+
+    @IsString()
+    @IsOptional()
+    avatarPublicId?: string;
 
     @IsEnum(UserRole)
     @IsOptional()

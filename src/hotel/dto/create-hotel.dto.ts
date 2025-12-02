@@ -1,9 +1,8 @@
 import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MediaDTO, TopReviewDTO, AddressDTO } from './common.dto';
+import { MediaDTO, AddressDTO } from './common.dto';
 
 export class CreateHotelDTO {
-  
     @IsString()
     @IsNotEmpty()
     hotelName: string;

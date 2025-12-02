@@ -12,6 +12,8 @@ export class FileValidationPipe implements PipeTransform {
             return value;
         }
 
+        console.log("Validation Running");
+
         if (Array.isArray(value)) {
             value.forEach(file => this.validateFile(file));
             return value;

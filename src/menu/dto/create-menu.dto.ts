@@ -32,6 +32,11 @@ export class MenuCategoryDTO {
     @IsNotEmpty()
     name: string;
 
+    @IsString()
+    @IsOptional()
+    @IsNotEmpty()
+    description?:string;
+
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => MenuItemDTO)

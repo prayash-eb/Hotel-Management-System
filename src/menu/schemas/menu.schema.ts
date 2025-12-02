@@ -3,6 +3,17 @@ import { Document, Types } from 'mongoose';
 
 export type MenuDocument = Menu & Document;
 
+
+@Schema({ _id: true })
+export class Media {
+    @Prop({ required: true })
+    link: string;
+    @Prop({ required: true })
+    publicId: string;
+}
+
+export const MediaSchema = SchemaFactory.createForClass(Media)
+
 @Schema({ _id: true })
 export class MenuItem {
     @Prop({ required: true })
@@ -14,8 +25,8 @@ export class MenuItem {
     @Prop({ required: true, min: 0 })
     price: number;
 
-    @Prop({ type: [String], default: [] })
-    images: string[];
+    @Prop({ type: [MediaSchema], default: [] })
+    media: Media[];
 
     @Prop({ required: true, enum: ['veg', 'non-veg', 'vegan'], default: 'veg' })
     type: string;
@@ -31,6 +42,9 @@ export class MenuCategory {
     @Prop({ required: true })
     name: string;
 
+    @Prop({ type: [MediaSchema] })
+    media: Media
+
     @Prop({ type: [MenuItemSchema], default: [] })
     items: MenuItem[];
 }
@@ -42,13 +56,13 @@ export class Menu {
     @Prop({ type: Types.ObjectId, required: true, ref: 'Hotel', index: true })
     hotelId: Types.ObjectId;
 
-    @Prop({ required: true })
+    @Prop({ type: String, required: true })
     name: string;
 
-    @Prop()
+    @Prop({ type: String })
     description: string;
 
-    @Prop({ default: false })
+    @Prop({ type: Boolean, default: false })
     isActive: boolean;
 
     @Prop({ type: [MenuCategorySchema], default: [] })

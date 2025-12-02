@@ -44,7 +44,7 @@ export class OrderService {
         quantity: item.quantity,
         lineTotal,
         notes: item.notes,
-        images: menuItem.images ?? [],
+        images: menuItem.media ?? [],
       };
     });
 

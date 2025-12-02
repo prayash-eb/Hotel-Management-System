@@ -4,16 +4,19 @@ import { Document, Types } from 'mongoose';
 export type HotelDocument = Hotel & Document;
 
 // Embedded Media Schema
-@Schema({ _id: false })
+@Schema({ _id: true })
 export class Media {
     @Prop({ required: true, enum: ['image', 'video', 'other'] })
     type: string;
 
-    @Prop()
+    @Prop({ type: String })
     label: string;
 
     @Prop({ required: true })
     link: string;
+
+    @Prop({ type: String })
+    publicId: string
 }
 
 // Embedded Location Schema
@@ -65,6 +68,18 @@ export class TopReview {
     updatedAt: Date;
 }
 
+
+@Schema({ _id: false })
+export class Approval {
+    @Prop({ type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' })
+    status: string;
+
+    @Prop()
+    reason?: string; // Optional reason for rejection
+}
+
+export const ApprovalSchema = SchemaFactory.createForClass(Approval);
+
 @Schema({ timestamps: true })
 export class Hotel {
     @Prop({ type: Types.ObjectId, required: true, index: true })
@@ -93,6 +108,9 @@ export class Hotel {
 
     @Prop({ default: false })
     isActive: boolean;
+
+    @Prop({ type: ApprovalSchema, default: () => ({}) })
+    approval: Approval;
 }
 
 export const HotelSchema = SchemaFactory.createForClass(Hotel);

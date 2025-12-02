@@ -64,6 +64,10 @@ export class User {
     @Prop({ type: String })
     avatar: string;
 
+
+    @Prop({ type: String })
+    avatarPublicId: string;
+
     @Prop({
         type: [{
             location: {

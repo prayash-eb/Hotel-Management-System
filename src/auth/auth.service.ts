@@ -29,11 +29,12 @@ export class AuthService {
             throw new ConflictException("User with given email already exists")
         }
 
-        const uploadFileResult = file ? await this.cloudinaryService.uploadImage(file) : null
+        const uploadFileResult = file ? await this.cloudinaryService.uploadMedia(file, "profile_images") : null
 
         const user = await this.userService.create({
             ...createUserDto,
-            avatar: uploadFileResult?.secure_url ?? null
+            avatar: uploadFileResult?.secure_url,
+            avatarPublicId:uploadFileResult?.public_id
         })
 
         await this.sendVerificationLink(user)
@@ -54,8 +55,8 @@ export class AuthService {
         if (!isPasswordMatched) {
             throw new NotFoundException("User not found with given credentials")
         }
-        const accessToken = await this.getAccessToken(user);
-        const refreshToken = await this.getRefreshToken(user)
+        const accessToken =  this.getAccessToken(user);
+        const refreshToken =  this.getRefreshToken(user)
 
         await user.addSession(accessToken, refreshToken)
 
@@ -140,13 +141,14 @@ export class AuthService {
     }
 
     getAccessToken(user: UserDocument) {
-        const { _id, email, role, name } = user;
+        const { _id, email, role, name, isEmailVerified } = user;
 
         const tokenPayload = {
             id: _id.toHexString(),
             email,
             role,
-            name
+            name,
+            isEmailVerified
         }
         const expiryMs = parseInt(this.configService.getOrThrow<string>("JWT_ACCESS_TOKEN_EXPIRY_MS"));
         return this.jwtService.sign(tokenPayload, {

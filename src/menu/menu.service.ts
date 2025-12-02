@@ -7,7 +7,7 @@ import { UpdateMenuDTO } from './dto/update-menu.dto';
 import { Hotel, HotelDocument } from '../hotel/schemas/hotel.schema';
 import { CloudinaryService } from '../common/cloudinary/cloudinary.service';
 import { UpdateMenuItemDTO } from './dto/update-menu-item.dto';
-import { CreateCategoryDTO, UpdateCategoryDTO } from './dto/category.dto';
+import { CreateCategoryArrayDTO, CreateCategoryDTO, UpdateCategoryDTO } from './dto/category.dto';
 
 @Injectable()
 export class MenuService {
@@ -56,7 +56,7 @@ export class MenuService {
                 { hotelId: menu.hotelId, _id: { $ne: menu._id } },
                 { $set: { isActive: false } }
             );
-            
+
             // Update hotel's menuId reference
             await this.hotelModel.findByIdAndUpdate(menu.hotelId, { menuId: menu._id });
         }
@@ -73,8 +73,8 @@ export class MenuService {
         if (!hotel) throw new NotFoundException('You are not the owner of the hotel this menu belongs to');
 
         if (menu.isActive) {
-             // If deleting active menu, unset the hotel's menuId
-             await this.hotelModel.findByIdAndUpdate(menu.hotelId, { $unset: { menuId: 1 } });
+            // If deleting active menu, unset the hotel's menuId
+            await this.hotelModel.findByIdAndUpdate(menu.hotelId, { $unset: { menuId: 1 } });
         }
 
         return await menu.deleteOne();
@@ -121,11 +121,11 @@ export class MenuService {
         const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
         if (!hotel) throw new NotFoundException('You are not the owner of the hotel this menu belongs to');
 
-        const result = await this.cloudinaryService.uploadImage(file);
+        const result = await this.cloudinaryService.uploadMedia(file, "menu_image");
 
         const updatedMenu = await this.menuModel.findOneAndUpdate(
             { _id: menuId },
-            { $push: { 'categories.$[cat].items.$[item].images': result.secure_url } },
+            { $push: { 'categories.$[cat].items.$[item].media': { link: result.secure_url, publicId: result.public_id } } },
             {
                 arrayFilters: [
                     { 'cat._id': new Types.ObjectId(categoryId) },
@@ -162,19 +162,25 @@ export class MenuService {
         return updatedMenu;
     }
 
-    async addCategory(menuId: string, ownerId: string, createCategoryDto: CreateCategoryDTO) {
+    async addCategory(menuId: string, ownerId: string, categories: CreateCategoryDTO[]) {
         const menu = await this.menuModel.findById(menuId);
         if (!menu) throw new NotFoundException('Menu not found');
 
         const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
         if (!hotel) throw new NotFoundException('You are not the owner of the hotel this menu belongs to');
 
-        const updatedMenu = await this.menuModel.findByIdAndUpdate(
+        return await this.menuModel.findByIdAndUpdate(
             menuId,
-            { $push: { categories: { ...createCategoryDto, items: [] } } },
+            {
+                $push: {
+                    categories: {
+                        $each: categories.map(cat => ({ ...cat, items: [] }))
+                    }
+                }
+            },
             { new: true }
         );
-        return updatedMenu;
+
     }
 
     async updateCategory(menuId: string, categoryId: string, ownerId: string, updateCategoryDto: UpdateCategoryDTO) {

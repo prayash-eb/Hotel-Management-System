@@ -12,10 +12,10 @@ export class CloudinaryService {
         })
     }
 
-    uploadImage(file: Express.Multer.File): Promise<UploadApiResponse | UploadApiErrorResponse> {
+    uploadMedia(file: Express.Multer.File, folder: string): Promise<UploadApiResponse> {
         return new Promise((resolve, reject) => {
             const upload = cloudinary.uploader.upload_stream(
-                { folder: 'profiles' },
+                { folder },
                 (error, result) => {
                     if (error) return reject(error);
                     resolve(result!);
@@ -23,5 +23,14 @@ export class CloudinaryService {
             );
             streamifier.createReadStream(file.buffer).pipe(upload)
         })
+    }
+
+    deleteMedia(publicId: string) {
+        return new Promise((resolve, reject) => {
+            cloudinary.uploader.destroy(publicId, (error, result) => {
+                if (error) return reject(error);
+                resolve(result!);
+            });
+        });
     }
 }
