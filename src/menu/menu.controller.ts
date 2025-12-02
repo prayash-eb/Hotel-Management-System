@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { CreateMenuDTO } from './dto/create-menu.dto';
 import { UpdateMenuDTO } from './dto/update-menu.dto';
@@ -11,13 +22,18 @@ import { ParseObjectIdPipe } from '@nestjs/mongoose';
 import { UpdateMenuItemDTO } from './dto/update-menu-item.dto';
 import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CreateCategoryArrayDTO, CreateCategoryDTO, UpdateCategoryDTO } from './dto/category.dto';
+import {
+  CreateCategoryArrayDTO,
+  CreateCategoryDTO,
+  UpdateCategoryDTO,
+} from './dto/category.dto';
 import { MenuItemDTO } from './dto/create-menu.dto';
 
 @Controller('menu')
 export class MenuController {
-  constructor(private readonly menuService: MenuService) { }
+  constructor(private readonly menuService: MenuService) {}
 
+  // create menu for a hotel
   @Post(':hotelId')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
@@ -26,22 +42,41 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() createMenuDto: CreateMenuDTO,
   ) {
-    return this.menuService.create(hotelId, user._id.toHexString(), createMenuDto);
+    return this.menuService.create(
+      hotelId,
+      user._id.toHexString(),
+      createMenuDto,
+    );
   }
 
-  @Get('hotel/:hotelId')
-  findAllByHotel(@Param('hotelId', ParseObjectIdPipe) hotelId: string) {
-    return this.menuService.findAllByHotel(hotelId);
+  // get menu by menuId
+  @Get(':menuId')
+  findOne(@Param('menuId', ParseObjectIdPipe) menuId: string) {
+    return this.menuService.findOne(menuId);
   }
 
-  @Get('hotel/:hotelId/active')
+  @Get('/hotel/:hotelId/activate/:menuId')
+  async activateMenu(
+    @Param('hotelId', ParseObjectIdPipe) hotelId: string,
+    @Param('menuId', ParseObjectIdPipe) menuId: string,
+  ) {
+    const updatedMenu = await this.menuService.activateMenu(hotelId, menuId);
+    console.log(updatedMenu);
+    return updatedMenu
+  }
+
+  // get all menues of a specific hotel
+  // get all menus for a specific hotel by hotel_id (get both active and inactive )
+  @Get('/hotel/:hotelId')
+  async findAllByHotel(@Param('hotelId', ParseObjectIdPipe) hotelId: string) {
+    const menus = await this.menuService.findAllByHotel(hotelId);
+    return menus;
+  }
+
+  // get active menu for a hotel
+  @Get('/hotel/:hotelId/active')
   getActiveMenu(@Param('hotelId', ParseObjectIdPipe) hotelId: string) {
     return this.menuService.getActiveMenu(hotelId);
-  }
-
-  @Get(':id')
-  findOne(@Param('id', ParseObjectIdPipe) id: string) {
-    return this.menuService.findOne(id);
   }
 
   @Patch(':id')
@@ -60,7 +95,7 @@ export class MenuController {
   @UseGuards(JwtAccessGuard, RoleGuard)
   remove(
     @Param('id', ParseObjectIdPipe) id: string,
-    @GetUser() user: UserDocument
+    @GetUser() user: UserDocument,
   ) {
     return this.menuService.remove(id, user._id.toHexString());
   }
@@ -75,7 +110,13 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() updateMenuItemDto: UpdateMenuItemDTO,
   ) {
-    return this.menuService.updateMenuItem(menuId, categoryId, itemId, user._id.toHexString(), updateMenuItemDto);
+    return this.menuService.updateMenuItem(
+      menuId,
+      categoryId,
+      itemId,
+      user._id.toHexString(),
+      updateMenuItemDto,
+    );
   }
 
   @Post(':menuId/category/:categoryId/item/:itemId/image')
@@ -89,7 +130,13 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @UploadedFile(FileValidationPipe) file: Express.Multer.File,
   ) {
-    return this.menuService.uploadMenuItemImage(menuId, categoryId, itemId, user._id.toHexString(), file);
+    return this.menuService.uploadMenuItemImage(
+      menuId,
+      categoryId,
+      itemId,
+      user._id.toHexString(),
+      file,
+    );
   }
 
   @Delete(':menuId/category/:categoryId/item/:itemId/image')
@@ -102,7 +149,13 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body('imageUrl') imageUrl: string,
   ) {
-    return this.menuService.removeMenuItemImage(menuId, categoryId, itemId, user._id.toHexString(), imageUrl);
+    return this.menuService.removeMenuItemImage(
+      menuId,
+      categoryId,
+      itemId,
+      user._id.toHexString(),
+      imageUrl,
+    );
   }
 
   @Post(':menuId/category')
@@ -113,7 +166,11 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() createCategoryDtoArray: CreateCategoryArrayDTO,
   ) {
-    return this.menuService.addCategory(menuId, user._id.toHexString(), createCategoryDtoArray.categories);
+    return this.menuService.addCategory(
+      menuId,
+      user._id.toHexString(),
+      createCategoryDtoArray.categories,
+    );
   }
 
   @Patch(':menuId/category/:categoryId')
@@ -125,7 +182,12 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() updateCategoryDto: UpdateCategoryDTO,
   ) {
-    return this.menuService.updateCategory(menuId, categoryId, user._id.toHexString(), updateCategoryDto);
+    return this.menuService.updateCategory(
+      menuId,
+      categoryId,
+      user._id.toHexString(),
+      updateCategoryDto,
+    );
   }
 
   @Delete(':menuId/category/:categoryId')
@@ -136,7 +198,11 @@ export class MenuController {
     @Param('categoryId', ParseObjectIdPipe) categoryId: string,
     @GetUser() user: UserDocument,
   ) {
-    return this.menuService.removeCategory(menuId, categoryId, user._id.toHexString());
+    return this.menuService.removeCategory(
+      menuId,
+      categoryId,
+      user._id.toHexString(),
+    );
   }
 
   @Post(':menuId/category/:categoryId/item')
@@ -148,7 +214,12 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() menuItemDto: MenuItemDTO,
   ) {
-    return this.menuService.addMenuItem(menuId, categoryId, user._id.toHexString(), menuItemDto);
+    return this.menuService.addMenuItem(
+      menuId,
+      categoryId,
+      user._id.toHexString(),
+      menuItemDto,
+    );
   }
 
   @Delete(':menuId/category/:categoryId/item/:itemId')
@@ -160,7 +231,12 @@ export class MenuController {
     @Param('itemId', ParseObjectIdPipe) itemId: string,
     @GetUser() user: UserDocument,
   ) {
-    return this.menuService.removeMenuItem(menuId, categoryId, itemId, user._id.toHexString());
+    return this.menuService.removeMenuItem(
+      menuId,
+      categoryId,
+      itemId,
+      user._id.toHexString(),
+    );
   }
 
   @Get(':menuId/categories')

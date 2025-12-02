@@ -78,7 +78,7 @@ export class HotelService {
     const total = await this.hotelModel.countDocuments(match);
 
     return {
-      data: hotels,
+      hotels,
       meta: {
         total,
         page,
