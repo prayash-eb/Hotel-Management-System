@@ -131,7 +131,10 @@ export class OrderService {
 
     await order.save();
 
-    this.orderEvents.emit(order._id.toString(), this.buildEventPayload(order, 'status-update'));
+    const payload = this.buildEventPayload(order, 'status-update');
+    if (payload) {
+      this.orderEvents.emit(order._id.toString(), payload);
+    }
     return order;
   }
 
@@ -197,23 +200,27 @@ export class OrderService {
   }
 
   private buildEventPayload(order: OrderDocument, type: string) {
-    const updatedAt = (order as any).updatedAt ?? new Date();
+    if (!order) return null;
+
+    const updatedAt = new Date();
+
     return {
       type,
-      orderId: order._id.toString(),
-      status: order.status,
-      statusTimeline: order.statusTimeline.map((timeline) => ({
-        status: timeline.status,
-        timestamp: timeline.timestamp,
-        notes: timeline.notes,
-        updatedBy: timeline.updatedBy,
+      orderId: order._id?.toString() ?? null,
+      status: order.status ?? null,
+      statusTimeline: (order.statusTimeline ?? []).map((timeline) => ({
+        status: timeline.status ?? null,
+        timestamp: timeline.timestamp ?? null,
+        notes: timeline.notes ?? null,
+        updatedBy: timeline.updatedBy ?? null,
       })),
-      totalAmount: order.totalAmount,
-      paymentStatus: order.paymentStatus,
-      estimatedReadyTime: order.estimatedReadyTime,
-      estimatedDeliveryTime: order.estimatedDeliveryTime,
-      fulfillmentType: order.fulfillmentType,
+      totalAmount: order.totalAmount ?? 0,
+      paymentStatus: order.paymentStatus ?? null,
+      estimatedReadyTime: order.estimatedReadyTime ?? null,
+      estimatedDeliveryTime: order.estimatedDeliveryTime ?? null,
+      fulfillmentType: order.fulfillmentType ?? null,
       updatedAt,
     };
   }
+
 }
