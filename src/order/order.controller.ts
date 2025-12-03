@@ -10,12 +10,12 @@ import { type UserDocument, UserRole } from '../user/schema/user.schema';
 import { ParseObjectIdPipe } from '@nestjs/mongoose';
 import { OrderEventsService } from './order-events.service';
 
-
 @Controller('order')
 export class OrderController {
-  constructor(private readonly orderService: OrderService,
-    private readonly orderEvents: OrderEventsService
-  ) { }
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly orderEvents: OrderEventsService,
+  ) {}
 
   @Post()
   @Roles(UserRole.CUSTOMER)
@@ -31,12 +31,20 @@ export class OrderController {
     return this.orderService.listCustomerOrders(user);
   }
 
+  /**
+   * Debug endpoint to view active SSE streams
+   * Admin only
+   */
+  @Get('debug/streams')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(JwtAccessGuard, RoleGuard)
+  getStreamStats() {
+    return this.orderEvents.getStats();
+  }
+
   @Get(':id')
   @UseGuards(JwtAccessGuard)
-  getOrder(
-    @Param('id', ParseObjectIdPipe) id: string,
-    @GetUser() user: UserDocument,
-  ) {
+  getOrder(@Param('id', ParseObjectIdPipe) id: string, @GetUser() user: UserDocument) {
     return this.orderService.getOrderById(id, user);
   }
 
@@ -53,9 +61,7 @@ export class OrderController {
 
   @Sse(':id/events')
   @UseGuards(JwtAccessGuard)
-  streamOrder(@Param('id', ParseObjectIdPipe) orderId: string) {
-    const initialPayload = { msg: 'snapshot', orderId };
-    return this.orderEvents.getStream(orderId, initialPayload);
+  streamOrder(@Param('id', ParseObjectIdPipe) orderId: string, @GetUser() user: UserDocument) {
+    return this.orderService.streamOrder(orderId, user);
   }
-
 }

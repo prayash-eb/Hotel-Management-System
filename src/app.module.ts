@@ -20,43 +20,43 @@ import { OrderModule } from './order/order.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, fileUploadConfig]
+      load: [databaseConfig, fileUploadConfig],
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
-        const dbConfig = configService.getOrThrow("mongodb")
+        const dbConfig = configService.getOrThrow('mongodb');
         return {
           uri: dbConfig.uri,
           dbname: dbConfig.dbName,
           connectTimeoutMS: dbConfig.connectTimeoutMS,
           socketTimeoutMS: dbConfig.socketTimeoutMS,
           connectionFactory: (connection) => {
-            const logger = new Logger("MongoDB");
-            connection.on("connected", () => {
-              logger.log("Database Connected")
-            })
-            connection.on("error", (error: any) => {
-              logger.error("Database connection error", error)
-            })
+            const logger = new Logger('MongoDB');
+            connection.on('connected', () => {
+              logger.log('Database Connected');
+            });
+            connection.on('error', (error: any) => {
+              logger.error('Database connection error', error);
+            });
             connection.on('disconnected', () => logger.warn('Database disconnected'));
             return connection;
-          }
-        }
-      }
+          },
+        };
+      },
     }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         return {
-          secret: configService.getOrThrow("JWT_ACCESS_TOKEN_SECRET"),
+          secret: configService.getOrThrow('JWT_ACCESS_TOKEN_SECRET'),
           signOptions: {
-            expiresIn: parseInt(configService.getOrThrow("JWT_ACCESS_TOKEN_EXPIRY_MS"))
-          }
-        }
-      }
+            expiresIn: parseInt(configService.getOrThrow('JWT_ACCESS_TOKEN_EXPIRY_MS')),
+          },
+        };
+      },
     }),
     MailerModule.forRootAsync({
       imports: [ConfigModule],
@@ -72,9 +72,9 @@ import { OrderModule } from './order/order.module';
           },
         },
         defaults: {
-          from: config.getOrThrow<string>("MAIL_FROM")
-        }
-      })
+          from: config.getOrThrow<string>('MAIL_FROM'),
+        },
+      }),
     }),
     UserModule,
     AuthModule,
@@ -83,9 +83,9 @@ import { OrderModule } from './order/order.module';
     CommonModule,
     ReviewModule,
     LoggingModule,
-    OrderModule
+    OrderModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

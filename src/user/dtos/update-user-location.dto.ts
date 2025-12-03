@@ -1,15 +1,14 @@
-import { IsLatitude, IsLongitude, isString, IsString } from "class-validator";
+import { IsLatitude, IsLongitude, isString, IsString } from 'class-validator';
 export class UserLocationDTO {
+  @IsString()
+  street: string;
 
-    @IsString()
-    street: string
-    
-    @IsString()
-    city: string
+  @IsString()
+  city: string;
 
-    @IsLatitude()
-    latitude: number
+  @IsLatitude()
+  latitude: number;
 
-    @IsLongitude()
-    longitude: number
+  @IsLongitude()
+  longitude: number;
 }

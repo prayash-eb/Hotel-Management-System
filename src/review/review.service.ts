@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { toObjectId } from '../utils/object-id.util';
 import { CreateReviewDTO } from './dto/create-review.dto';
 import { Review, ReviewDocument } from './schemas/review.schema';
 import { Hotel, HotelDocument } from '../hotel/schemas/hotel.schema';
@@ -15,14 +16,15 @@ export class ReviewService {
 
   async create(user: UserDocument, createReviewDto: CreateReviewDTO) {
     const { hotelId, rating, comment } = createReviewDto;
+    const hotelObjectId = toObjectId(hotelId, 'hotelId');
 
-    const hotel = await this.hotelModel.findById(hotelId);
+    const hotel = await this.hotelModel.findById(hotelObjectId);
     if (!hotel) {
       throw new NotFoundException('Hotel not found');
     }
 
     const review = await this.reviewModel.create({
-      hotelId: new Types.ObjectId(hotelId),
+      hotelId: hotelObjectId,
       customerId: user._id,
       customerName: user.name,
       rating,
@@ -35,8 +37,9 @@ export class ReviewService {
   }
 
   async updateHotelStats(hotelId: string, hotelName: string) {
+    const hotelObjectId = toObjectId(hotelId, 'hotelId');
     const stats = await this.reviewModel.aggregate([
-      { $match: { hotelId: new Types.ObjectId(hotelId) } },
+      { $match: { hotelId: hotelObjectId } },
       {
         $group: {
           _id: '$hotelId',
@@ -51,7 +54,7 @@ export class ReviewService {
 
     // Get top 3 recent reviews
     const recentReviews = await this.reviewModel
-      .find({ hotelId: new Types.ObjectId(hotelId) })
+      .find({ hotelId: hotelObjectId })
       .sort({ createdAt: -1 })
       .limit(3)
       .exec();
@@ -75,16 +78,17 @@ export class ReviewService {
   }
 
   async getHotelReviews(hotelId: string, page: number = 1, limit: number = 10) {
+    const hotelObjectId = toObjectId(hotelId, 'hotelId');
     const skip = (page - 1) * limit;
     const reviews = await this.reviewModel
-      .find({ hotelId: new Types.ObjectId(hotelId) })
+      .find({ hotelId: hotelObjectId })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .exec();
 
     const total = await this.reviewModel.countDocuments({
-      hotelId: new Types.ObjectId(hotelId),
+      hotelId: hotelObjectId,
     });
 
     return {

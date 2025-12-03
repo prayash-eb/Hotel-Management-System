@@ -6,6 +6,10 @@ import { Menu, MenuSchema } from './schemas/menu.schema';
 import { Hotel, HotelSchema } from '../hotel/schemas/hotel.schema';
 import { UserModule } from '../user/user.module';
 import { AuthModule } from '../auth/auth.module';
+import { MenuAuthorizationService } from './services/menu-authorization.service';
+import { MenuCategoryService } from './services/menu-category.service';
+import { MenuItemService } from './services/menu-item.service';
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
@@ -14,9 +18,10 @@ import { AuthModule } from '../auth/auth.module';
       { name: Hotel.name, schema: HotelSchema },
     ]),
     UserModule,
-    AuthModule
+    AuthModule,
+    CommonModule,
   ],
   controllers: [MenuController],
-  providers: [MenuService],
+  providers: [MenuService, MenuAuthorizationService, MenuCategoryService, MenuItemService],
 })
 export class MenuModule {}

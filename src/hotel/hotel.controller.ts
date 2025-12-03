@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseInterceptors, UploadedFiles, Query, ForbiddenException, ParseFilePipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  UseInterceptors,
+  UploadedFiles,
+  Query,
+  ForbiddenException,
+  ParseFilePipe,
+} from '@nestjs/common';
 import { HotelService } from './hotel.service';
 import { CreateHotelDTO } from './dto/create-hotel.dto';
 import { UpdateHotelDTO } from './dto/update-hotel.dto';
@@ -13,19 +27,20 @@ import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
 import { HotelQueryDTO } from './dto/hotel-query.dto';
 import RejectHotelReasonDTO from './dto/reject-hotel.dto';
 import DeleteHotelMediaDTO from './dto/delete-hotel-media.dto';
+import { Types } from 'mongoose';
 
 @Controller('hotel')
 export class HotelController {
-  constructor(private readonly hotelService: HotelService) { }
+  constructor(private readonly hotelService: HotelService) {}
 
   @Post()
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
   async create(@GetUser() user: UserDocument, @Body() createHotelDto: CreateHotelDTO) {
     if (!user.isEmailVerified) {
-      throw new ForbiddenException("Please verify your email first")
+      throw new ForbiddenException('Please verify your email first');
     }
-    return await this.hotelService.create(user._id.toHexString(), createHotelDto);
+    return await this.hotelService.create(user._id, createHotelDto);
   }
 
   @Get()
@@ -33,15 +48,15 @@ export class HotelController {
     return await this.hotelService.findAll(query);
   }
 
-  @Get("/all")
+  @Get('/all')
   async findAllHotels() {
     return await this.hotelService.findAllHotels();
   }
 
-  @Get("/mine")
+  @Get('/mine')
   @UseGuards(JwtAccessGuard)
   async findByHotels(@GetUser() user: UserDocument) {
-    return await this.hotelService.findMyHotels(user._id.toHexString())
+    return await this.hotelService.findMyHotels(user._id);
   }
 
   @Get(':id')
@@ -52,7 +67,11 @@ export class HotelController {
   @Patch(':id')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  async update(@Param('id') hotelId: string, @GetUser() user: UserDocument, @Body() updateHotelDto: UpdateHotelDTO) {
+  async update(
+    @Param('id', ParseObjectIdPipe) hotelId: string,
+    @GetUser() user: UserDocument,
+    @Body() updateHotelDto: UpdateHotelDTO,
+  ) {
     return await this.hotelService.update(hotelId, user._id.toHexString(), updateHotelDto);
   }
 
@@ -60,29 +79,31 @@ export class HotelController {
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
   async activate(@Param('id', ParseObjectIdPipe) hotelId: string, @GetUser() user: UserDocument) {
-    return await this.hotelService.activateHotel(hotelId, user._id.toHexString());
+    return await this.hotelService.activateHotel(hotelId, user._id);
   }
 
   @Patch(':id/deactivate')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  async deactivate(@Param('id') hotelId: string, @GetUser() user: UserDocument) {
+  async deactivate(@Param('id', ParseObjectIdPipe) hotelId: string, @GetUser() user: UserDocument) {
     return await this.hotelService.deactivateHotel(hotelId, user._id.toHexString());
   }
 
-
-  @Patch(":id/approve")
+  @Patch(':id/approve')
   @Roles(UserRole.ADMIN)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  async approveHotelByAdmin(@Param("id", ParseObjectIdPipe) hotelId: string) {
-    return await this.hotelService.approveHotel(hotelId)
+  async approveHotelByAdmin(@Param('id', ParseObjectIdPipe) hotelId: string) {
+    return await this.hotelService.approveHotel(hotelId);
   }
 
-  @Patch(":id/reject")
+  @Patch(':id/reject')
   @Roles(UserRole.ADMIN)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  async rejectHotelByAdmin(@Param("id", ParseObjectIdPipe) hotelId: string, @Body() body: RejectHotelReasonDTO) {
-    return await this.hotelService.rejectHotel(hotelId, body.reason)
+  async rejectHotelByAdmin(
+    @Param('id', ParseObjectIdPipe) hotelId: string,
+    @Body() body: RejectHotelReasonDTO,
+  ) {
+    return await this.hotelService.rejectHotel(hotelId, body.reason);
   }
 
   @Post(':id/images')
@@ -90,28 +111,31 @@ export class HotelController {
   @UseGuards(JwtAccessGuard, RoleGuard)
   @UseInterceptors(FilesInterceptor('images', 10))
   async uploadMedias(
-    @Param('id') hotelId: string,
+    @Param('id', ParseObjectIdPipe) hotelId: string,
     @GetUser() user: UserDocument,
-    @UploadedFiles(new ParseFilePipe(), FileValidationPipe) files: Array<Express.Multer.File>
+    @UploadedFiles(new ParseFilePipe(), FileValidationPipe) files: Array<Express.Multer.File>,
   ) {
     return await this.hotelService.uploadMedias(hotelId, user._id.toHexString(), files);
   }
 
-  @Delete(":id/images")
+  @Delete(':id/images')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
   async deleteMedias(
-    @Param("id") hotelId: string,
+    @Param('id', ParseObjectIdPipe) hotelId: string,
     @GetUser() user: UserDocument,
-    @Body() body: DeleteHotelMediaDTO
+    @Body() body: DeleteHotelMediaDTO,
   ) {
-    return await this.hotelService.deleteMedias(hotelId, user._id.toHexString(), body.medias)
+    return await this.hotelService.deleteMedias(hotelId, user._id.toHexString(), body.medias);
   }
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  async deleteHotel(@Param('id') hotelId: string, @GetUser() user: UserDocument) {
+  async deleteHotel(
+    @Param('id', ParseObjectIdPipe) hotelId: string,
+    @GetUser() user: UserDocument,
+  ) {
     return await this.hotelService.delete(hotelId, user._id.toHexString(), user.role);
   }
 }

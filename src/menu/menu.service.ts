@@ -1,110 +1,102 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { toObjectId } from '../utils/object-id.util';
 import { Menu, MenuDocument } from './schemas/menu.schema';
-import { CreateMenuDTO, MenuItemArrayDTO, MenuItemDTO } from './dto/create-menu.dto';
+import { CreateMenuDTO } from './dto/create-menu.dto';
 import { UpdateMenuDTO } from './dto/update-menu.dto';
 import { Hotel, HotelDocument } from '../hotel/schemas/hotel.schema';
-import { CloudinaryService } from '../common/cloudinary/cloudinary.service';
-import { UpdateMenuItemDTO } from './dto/update-menu-item.dto';
-import {
-  CreateCategoryArrayDTO,
-  CreateCategoryDTO,
-  UpdateCategoryDTO,
-} from './dto/category.dto';
-import { Type } from 'class-transformer';
+import { MenuAuthorizationService } from './services/menu-authorization.service';
 
 @Injectable()
 export class MenuService {
+  private readonly logger = new Logger(MenuService.name);
+
   constructor(
-    @InjectModel(Menu.name) private menuModel: Model<MenuDocument>,
-    @InjectModel(Hotel.name) private hotelModel: Model<HotelDocument>,
-    private readonly cloudinaryService: CloudinaryService,
-  ) { }
+    @InjectModel(Menu.name) private readonly menuModel: Model<MenuDocument>,
+    @InjectModel(Hotel.name) private readonly hotelModel: Model<HotelDocument>,
+    private readonly authService: MenuAuthorizationService,
+  ) {}
 
-  async create(ownerId: string, createMenuDto: CreateMenuDTO) {
+  async create(ownerId: Types.ObjectId, createMenuDto: CreateMenuDTO): Promise<MenuDocument> {
+    const hotelObjectId = toObjectId(createMenuDto.hotelId, 'hotelId');
+
     // Verify hotel ownership
-    const hotel = await this.hotelModel.findOne({
-      _id: new Types.ObjectId(createMenuDto.hotelId),
-      ownerId: new Types.ObjectId(ownerId)
-    });
-
-    if (!hotel) {
-      throw new NotFoundException('Hotel not found or you are not the owner');
-    }
+    await this.authService.verifyHotelOwnership(hotelObjectId, ownerId);
 
     const menu = new this.menuModel({
       ...createMenuDto,
-      hotelId: new Types.ObjectId(createMenuDto.hotelId)
+      hotelId: hotelObjectId,
     });
 
-    return await menu.save();
+    const savedMenu = await menu.save();
+    this.logger.log(`Menu created for hotel ${hotelObjectId}`);
+    return savedMenu;
   }
 
-  async findAllByHotel(hotelId: string) {
-    return await this.menuModel.find({ hotelId: new Types.ObjectId(hotelId) });
+  async findAllByHotel(hotelId: string): Promise<MenuDocument[]> {
+    return this.menuModel.find({ hotelId });
   }
 
-  async findOne(menuId: string) {
-    const menu = await this.menuModel.findById(new Types.ObjectId(menuId));
-    if (!menu) throw new NotFoundException('Menu not found');
+  async findOne(menuId: string): Promise<MenuDocument> {
+    const menu = await this.menuModel.findById(menuId);
+    if (!menu) {
+      throw new NotFoundException('Menu not found');
+    }
     return menu;
   }
 
-  async activateMenu(hotelId: string, menuId: string) {
-
-    const hotelObjectId = new Types.ObjectId(hotelId)
-    const menuObjectId = new Types.ObjectId(menuId)
-    const hotel = await this.hotelModel.findById(hotelObjectId);
+  async activateMenu(hotelId: string, menuId: string): Promise<MenuDocument | null> {
+    const hotel = await this.hotelModel.findById(hotelId);
     if (!hotel) {
       throw new NotFoundException('Hotel with given id not found');
     }
-    const menu = await this.menuModel.findById(menuObjectId);
+
+    const menu = await this.menuModel.findById(menuId);
     if (!menu) {
       throw new NotFoundException('Menu with given id not found');
     }
-    // deactivate all menus first
-    await this.menuModel.updateMany(
-      { hotelId: hotelObjectId },
-      {
-        $set: {
-          isActive: false,
-        },
-      },
-    );
 
-    // activate only that specific
+    // Deactivate all menus for this hotel first
+    await this.menuModel.updateMany({ hotelId }, { $set: { isActive: false } });
+
+    // Activate the specific menu
     const updatedMenu = await this.menuModel.findOneAndUpdate(
-      { _id: menuObjectId },
-      {
-        $set: {
-          isActive: true,
-        },
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { _id: menuId },
+      { $set: { isActive: true } },
+      { new: true, runValidators: true },
     );
 
+    this.logger.log(`Menu ${menuId} activated for hotel ${hotelId}`);
     return updatedMenu;
   }
 
-  async update(menuId: string, ownerId: string, updateMenuDto: UpdateMenuDTO) {
-    const menu = await this.menuModel.findById(menuId);
-    if (!menu) throw new NotFoundException('Menu not found');
+  async getActiveMenu(hotelId: string): Promise<MenuDocument> {
+    const menu = await this.menuModel.findOne({
+      hotelId,
+      isActive: true,
+    });
 
-    // Verify hotel ownership via the menu's hotelId
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
+    if (!menu) {
+      throw new NotFoundException('No active menu found for this hotel');
+    }
+
+    return menu;
+  }
+
+  async update(
+    menuId: string,
+    ownerId: string,
+    updateMenuDto: UpdateMenuDTO,
+  ): Promise<MenuDocument> {
+    const menu = await this.menuModel.findById(menuId);
+    if (!menu) {
+      throw new NotFoundException('Menu not found');
+    }
+
+    // Verify ownership
+    const ownerObjectId = toObjectId(ownerId, 'ownerId');
+    await this.authService.verifyMenuOwnership(menu, ownerObjectId);
 
     // If setting to active, deactivate other menus for this hotel
     if (updateMenuDto.isActive === true) {
@@ -120,18 +112,19 @@ export class MenuService {
     }
 
     Object.assign(menu, updateMenuDto);
-    return await menu.save();
+    const updatedMenu = await menu.save();
+    this.logger.log(`Menu ${menuId} updated`);
+    return updatedMenu;
   }
 
-  async remove(menuId: string, ownerId: string) {
+  async remove(menuId: string, ownerId: string): Promise<any> {
     const menu = await this.menuModel.findById(menuId);
-    if (!menu) throw new NotFoundException('Menu not found');
+    if (!menu) {
+      throw new NotFoundException('Menu not found');
+    }
 
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
+    const ownerObjectId = toObjectId(ownerId, 'ownerId');
+    await this.authService.verifyMenuOwnership(menu, ownerObjectId);
 
     if (menu.isActive) {
       // If deleting active menu, unset the hotel's menuId
@@ -140,291 +133,8 @@ export class MenuService {
       });
     }
 
-    return await menu.deleteOne();
-  }
-
-  async getActiveMenu(hotelId: string) {
-    const menu = await this.menuModel.findOne({
-      hotelId: new Types.ObjectId(hotelId),
-      isActive: true,
-    });
-    if (!menu)
-      throw new NotFoundException('No active menu found for this hotel');
-    return menu;
-  }
-
-  async addCategory(
-    menuId: string,
-    ownerId: string,
-    categories: CreateCategoryDTO[],
-  ) {
-
-    const menuObjectId = new Types.ObjectId(menuId);
-    const ownerObjectId = new Types.ObjectId(ownerId)
-
-    const menu = await this.menuModel.findById(menuObjectId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId: ownerObjectId });
-    if (!hotel)
-      throw new ForbiddenException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    return await this.menuModel.findOneAndUpdate(
-      { _id: menuObjectId },
-      {
-        $push: {
-          categories: {
-            $each: categories.map((cat) => ({ ...cat, items: [] })),
-          },
-        },
-      },
-      { new: true },
-    );
-  }
-
-  async getCategories(menuId: string) {
-    const menu = await this.menuModel.findById(menuId).select('categories');
-    if (!menu) throw new NotFoundException('Menu not found');
-    const categoriesWithoutItems = menu.categories.map((cat) => ({
-      _id: cat._id,
-      name: cat.name,
-      link: cat.media,
-    }))
-    return categoriesWithoutItems
-  }
-
-  async updateCategory(
-    menuId: string,
-    categoryId: string,
-    ownerId: string,
-    updateCategoryDto: UpdateCategoryDTO,
-  ) {
-
-    const menuObjectId = new Types.ObjectId(menuId);
-    const categoryObjectId = new Types.ObjectId(categoryId)
-    const ownerObjectId = new Types.ObjectId(ownerId)
-
-    const menu = await this.menuModel.findById(menuObjectId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId: ownerObjectId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    const updatedMenu = await this.menuModel.findOneAndUpdate(
-      { _id: menuId, 'categories._id': categoryObjectId },
-      { $set: { 'categories.$.name': updateCategoryDto.name } },
-      { new: true },
-    );
-
-    if (!updatedMenu) throw new NotFoundException('Category not found');
-    return updatedMenu;
-  }
-
-  async removeCategory(menuId: string, categoryId: string, ownerId: string) {
-    const menu = await this.menuModel.findById(menuId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    const updatedMenu = await this.menuModel.findByIdAndUpdate(
-      menuId,
-      { $pull: { categories: { _id: categoryId } } },
-      { new: true },
-    );
-    return updatedMenu;
-  }
-
-  async addMenuItem(
-    menuId: string,
-    categoryId: string,
-    ownerId: string,
-    menuItemDto: MenuItemArrayDTO,
-  ) {
-
-    const menuObjectId = new Types.ObjectId(menuId);
-    const categoryObjectId = new Types.ObjectId(categoryId)
-    const ownerObjectId = new Types.ObjectId(ownerId)
-
-    const menu = await this.menuModel.findById(menuObjectId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId: ownerObjectId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    const updatedMenu = await this.menuModel.findOneAndUpdate(
-      { _id: menuId, 'categories._id': categoryObjectId },
-      { $push: { 'categories.$.items': { $each: menuItemDto.items } } },
-      { new: true },
-    );
-
-    if (!updatedMenu) throw new NotFoundException('Category not found');
-    return updatedMenu;
-  }
-
-  async getMenuItems(menuId: string, categoryId: string, ownerId: string) {
-
-    const menu = await this.menuModel.findById(menuId);
-    if (!menu) {
-      throw new NotFoundException("Menu not found")
-    }
-    const category = menu.categories.find((cat) => cat._id.equals(categoryId))
-    return category?.items ? category.items : []
-  }
-
-  async updateMenuItem(
-    menuId: string,
-    categoryId: string,
-    itemId: string,
-    ownerId: string,
-    updateDto: UpdateMenuItemDTO,
-  ) {
-
-    const menuObjectId = new Types.ObjectId(menuId);
-    const categoryObjectId = new Types.ObjectId(categoryId)
-    const ownerObjectId = new Types.ObjectId(ownerId)
-    const itemObjectId = new Types.ObjectId(itemId)
-
-
-    const menu = await this.menuModel.findById(menuObjectId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId: ownerObjectId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    const updateFields: any = {};
-    for (const key in updateDto) {
-      updateFields[`categories.$[cat].items.$[item].${key}`] = updateDto[key];
-    }
-
-    const updatedMenu = await this.menuModel.findOneAndUpdate(
-      { _id: menuObjectId },
-      { $set: updateFields },
-      {
-        arrayFilters: [
-          { 'cat._id': categoryObjectId },
-          { 'item._id': categoryObjectId },
-        ],
-        new: true,
-      },
-    );
-
-    if (!updatedMenu) throw new NotFoundException('Menu item not found');
-    return updatedMenu;
-  }
-
-  async removeMenuItem(
-    menuId: string,
-    categoryId: string,
-    itemId: string,
-    ownerId: string,
-  ) {
-    const menu = await this.menuModel.findById(menuId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    const updatedMenu = await this.menuModel.findOneAndUpdate(
-      { _id: menuId },
-      { $pull: { 'categories.$[cat].items': { _id: itemId } } },
-      {
-        arrayFilters: [{ 'cat._id': new Types.ObjectId(categoryId) }],
-        new: true,
-      },
-    );
-
-    if (!updatedMenu) throw new NotFoundException('Category or Item not found');
-    return updatedMenu;
-  }
-
-  async uploadMenuItemImage(
-    menuId: string,
-    categoryId: string,
-    itemId: string,
-    ownerId: string,
-    file: Express.Multer.File,
-  ) {
-    const menu = await this.menuModel.findById(menuId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    const result = await this.cloudinaryService.uploadMedia(file, 'menu_image');
-
-    const updatedMenu = await this.menuModel.findOneAndUpdate(
-      { _id: menuId },
-      {
-        $push: {
-          'categories.$[cat].items.$[item].media': {
-            link: result.secure_url,
-            publicId: result.public_id,
-          },
-        },
-      },
-      {
-        arrayFilters: [
-          { 'cat._id': new Types.ObjectId(categoryId) },
-          { 'item._id': new Types.ObjectId(itemId) },
-        ],
-        new: true,
-      },
-    );
-
-    if (!updatedMenu) throw new NotFoundException('Menu item not found');
-    return updatedMenu;
-  }
-
-  async removeMenuItemImage(
-    menuId: string,
-    categoryId: string,
-    itemId: string,
-    ownerId: string,
-    imageUrl: string,
-  ) {
-    const menu = await this.menuModel.findById(menuId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    const updatedMenu = await this.menuModel.findOneAndUpdate(
-      { _id: menuId },
-      { $pull: { 'categories.$[cat].items.$[item].images': imageUrl } },
-      {
-        arrayFilters: [
-          { 'cat._id': new Types.ObjectId(categoryId) },
-          { 'item._id': new Types.ObjectId(itemId) },
-        ],
-        new: true,
-      },
-    );
-
-    if (!updatedMenu) throw new NotFoundException('Menu item not found');
-    return updatedMenu;
+    const result = await menu.deleteOne();
+    this.logger.log(`Menu ${menuId} deleted`);
+    return result;
   }
 }

@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsIn,
+  IsMongoId,
   IsNotEmpty,
   IsOptional,
   IsPositive,
@@ -12,7 +13,7 @@ import {
 
 export class OrderItemDTO {
   @IsNotEmpty()
-  @IsString()
+  @IsMongoId()
   id: string;
 
   @IsPositive()
@@ -45,7 +46,7 @@ export class DeliveryAddressDTO {
 
 export class CreateOrderDTO {
   @IsNotEmpty()
-  @IsString()
+  @IsMongoId()
   hotelId: string;
 
   @IsArray()

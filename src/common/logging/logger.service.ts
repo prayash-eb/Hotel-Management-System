@@ -29,4 +29,12 @@ export class AppLoggerService implements LoggerService {
     const verbose = (this.logger as any).verbose ?? this.logger.log.bind(this.logger);
     verbose(message, context);
   }
+
+  /**
+   * Log HTTP-level messages (for API requests/responses)
+   */
+  http(message: any, context?: string): void {
+    const http = (this.logger as any).http ?? this.logger.log.bind(this.logger);
+    http(message, context);
+  }
 }

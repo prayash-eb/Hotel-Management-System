@@ -23,11 +23,13 @@ async function bootstrap() {
     next();
   });
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-    forbidNonWhitelisted: false
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: false,
+    }),
+  );
 
   app.useGlobalInterceptors(new LoggingInterceptor(logger));
 

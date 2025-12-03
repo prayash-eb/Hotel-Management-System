@@ -21,7 +21,6 @@ export enum PaymentStatus {
 @Schema({ _id: false })
 export class OrderItem {
   @Prop({ type: Types.ObjectId, required: true })
-
   id: Types.ObjectId;
 
   @Prop({ required: true })
@@ -69,10 +68,12 @@ export class DeliveryAddress {
   @Prop({ required: true })
   city: string;
 
-  @Prop({ type: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
-    coordinates: { type: [Number], default: undefined }
-  } })
+  @Prop({
+    type: {
+      type: { type: String, enum: ['Point'], default: 'Point' },
+      coordinates: { type: [Number], default: undefined },
+    },
+  })
   location?: {
     type: 'Point';
     coordinates: [number, number];
@@ -124,7 +125,6 @@ export class Order {
 
   @Prop()
   estimatedDeliveryTime?: Date;
-
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

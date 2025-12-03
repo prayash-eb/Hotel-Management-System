@@ -1,8 +1,8 @@
-import { IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
 
 export class CreateReviewDTO {
   @IsNotEmpty()
-  @IsString()
+  @IsMongoId()
   hotelId: string;
 
   @IsNotEmpty()

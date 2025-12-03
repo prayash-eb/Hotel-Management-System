@@ -3,7 +3,7 @@ import { CreateMenuDTO } from './create-menu.dto';
 import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class UpdateMenuDTO extends PartialType(CreateMenuDTO) {
-    @IsBoolean()
-    @IsOptional()
-    isActive?: boolean
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }

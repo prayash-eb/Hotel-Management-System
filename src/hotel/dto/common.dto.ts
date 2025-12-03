@@ -1,67 +1,78 @@
-import { IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested, Min, Max, IsMongoId } from 'class-validator';
+import {
+  IsDate,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+  Min,
+  Max,
+  IsMongoId,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class MediaDTO {
-    @IsEnum(['image', 'video'])
-    type: 'image' | 'video';
+  @IsEnum(['image', 'video'])
+  type: 'image' | 'video';
 
-    @IsString()
-    @IsNotEmpty()
-    label: string;
+  @IsString()
+  @IsNotEmpty()
+  label: string;
 
-    @IsString()
-    @IsNotEmpty()
-    link: string;
+  @IsString()
+  @IsNotEmpty()
+  link: string;
 }
 
 export class LocationDTO {
-    @IsNumber()
-    longitude: number;
+  @IsNumber()
+  longitude: number;
 
-    @IsNumber()
-    latitude: number;
+  @IsNumber()
+  latitude: number;
 }
 
 export class AddressDTO {
-    @ValidateNested()
-    @Type(() => LocationDTO)
-    location: LocationDTO;
+  @ValidateNested()
+  @Type(() => LocationDTO)
+  location: LocationDTO;
 
-    @IsString()
-    @IsNotEmpty()
-    street: string;
+  @IsString()
+  @IsNotEmpty()
+  street: string;
 
-    @IsString()
-    @IsNotEmpty()
-    city: string;
+  @IsString()
+  @IsNotEmpty()
+  city: string;
 }
 
 export class TopReviewDTO {
-    @IsMongoId() 
-    reviewId: string;
+  @IsMongoId()
+  reviewId: string;
 
-    @IsMongoId()
-    customerId: string;
+  @IsMongoId()
+  customerId: string;
 
-    @IsString()
-    hotelName: string;
+  @IsString()
+  hotelName: string;
 
-    @IsString()
-    customerName: string;
+  @IsString()
+  customerName: string;
 
-    @IsNumber()
-    @Min(0)
-    @Max(5)
-    ratingScore: number;
+  @IsNumber()
+  @Min(0)
+  @Max(5)
+  ratingScore: number;
 
-    @IsString()
-    reviewMessage: string;
+  @IsString()
+  reviewMessage: string;
 
-    @IsOptional()
-    @IsDate()
-    createdAt?: Date;
+  @IsOptional()
+  @IsDate()
+  createdAt?: Date;
 
-    @IsOptional()
-    @IsDate()
-    updatedAt?: Date;
+  @IsOptional()
+  @IsDate()
+  updatedAt?: Date;
 }

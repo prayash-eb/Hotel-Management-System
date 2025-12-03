@@ -1,11 +1,4 @@
-import {
-  IsArray,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  ValidateNested,
-  Length
-} from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested, Length } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MediaDTO, AddressDTO } from './common.dto';
 

@@ -10,106 +10,107 @@ import { RoleGuard } from './guards/role.guard';
 import { Roles } from './decorators/role.decorator';
 import { type UserDocument, UserRole } from '../user/schema/user.schema';
 import { GetUser } from './decorators/get-user.decorator';
-import type { Request } from "express";
+import type { Request } from 'express';
 import { ChangePasswordDTO, ForgotPasswordDTO, ResetPasswordDTO } from './dtos/password.dto';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: UserDocument
+      user?: UserDocument;
     }
   }
 }
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService
-  ) { }
+  constructor(private readonly authService: AuthService) {}
 
-  @Post("/signup")
-  @UseInterceptors(FileInterceptor("avatar"))
+  @Post('/signup')
+  @UseInterceptors(FileInterceptor('avatar'))
   async signUpUser(
     @UploadedFile(FileValidationPipe) file: Express.Multer.File,
     @Body() body: CreateUserDTO,
   ) {
-    return await this.authService.signUp(body, file)
+    return await this.authService.signUp(body, file);
   }
 
-  @Post("/signin")
+  @Post('/signin')
   async signInUser(@Body() body: UserLoginDTO) {
-    const { accessToken, refreshToken } = await this.authService.signIn(body)
+    const { accessToken, refreshToken } = await this.authService.signIn(body);
     return {
-      message: "Logged in successfully",
+      message: 'Logged in successfully',
       accessToken,
-      refreshToken
-    }
+      refreshToken,
+    };
   }
-  @Get("/refresh-token")
+  @Get('/refresh-token')
   @UseGuards(JwtRefreshGuard) // attaches req.user = {user, refreshToken}
-  async refreshUserToken(@GetUser() userInfo: { user: UserDocument, refreshToken: string }) {
+  async refreshUserToken(@GetUser() userInfo: { user: UserDocument; refreshToken: string }) {
     const { user, refreshToken } = userInfo;
-    const { accessToken, refreshToken: newRefreshToken } = await this.authService.refreshToken(user, refreshToken)
+    const { accessToken, refreshToken: newRefreshToken } = await this.authService.refreshToken(
+      user,
+      refreshToken,
+    );
 
     return {
-      message: "Token Refresh Successfully",
+      message: 'Token Refresh Successfully',
       accessToken,
-      refreshToken: newRefreshToken
-    }
+      refreshToken: newRefreshToken,
+    };
   }
 
-  @Get("/logout")
+  @Get('/logout')
   @UseGuards(JwtAccessGuard)
   async logoutUser(@GetUser() user: UserDocument, @Req() req: Request) {
     const authHeader = req.headers.authorization;
-    const accessToken = authHeader ? authHeader.split("Bearer ")[1] : "";
-    await this.authService.logout(user, accessToken)
+    const accessToken = authHeader ? authHeader.split('Bearer ')[1] : '';
+    await this.authService.logout(user, accessToken);
     return {
-      message: "Logged out successfully",
-      id: user._id
-    }
+      message: 'Logged out successfully',
+      id: user._id,
+    };
   }
 
-  @Get("/logoutall")
+  @Get('/logoutall')
   @UseGuards(JwtAccessGuard)
   async logoutAllDevices(@GetUser() user: UserDocument, @Req() req: Request) {
     const authHeader = req.headers.authorization;
-    const accessToken = authHeader ? authHeader.split("Bearer ")[1] : "";
-    await this.authService.logoutAll(user, accessToken)
+    const accessToken = authHeader ? authHeader.split('Bearer ')[1] : '';
+    await this.authService.logoutAll(user, accessToken);
     return {
-      message: "Logged out all devices successfully",
-      id: user._id
-    }
+      message: 'Logged out all devices successfully',
+      id: user._id,
+    };
   }
 
   @Post('/send-verification-link')
   @UseGuards(JwtAccessGuard)
   async sendVerificationLink(@GetUser() user: UserDocument) {
-    await this.authService.sendVerificationLink(user)
+    await this.authService.sendVerificationLink(user);
     return {
-      message: "Verification Link sent to an email"
-    }
+      message: 'Verification Link sent to an email',
+    };
   }
 
-  @Get("/verify-email")
-  async verifyEmail(@Query("token") token: string) {
-    await this.authService.verifyEmail(token)
+  @Get('/verify-email')
+  async verifyEmail(@Query('token') token: string) {
+    await this.authService.verifyEmail(token);
     return {
-      message: "Email Verified Successfully"
-    }
+      message: 'Email Verified Successfully',
+    };
   }
 
-  @Post("/forgot-password")
+  @Post('/forgot-password')
   async forgotPassword(@Body() body: ForgotPasswordDTO) {
     return await this.authService.forgotPassword(body);
   }
 
-  @Post("/reset-password")
+  @Post('/reset-password')
   async resetPassword(@Body() body: ResetPasswordDTO) {
     return await this.authService.resetPassword(body);
   }
 
-  @Post("/change-password")
+  @Post('/change-password')
   @UseGuards(JwtAccessGuard)
   async changePassword(@GetUser() user: UserDocument, @Body() body: ChangePasswordDTO) {
     return await this.authService.changePassword(user, body);

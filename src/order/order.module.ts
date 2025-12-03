@@ -6,6 +6,9 @@ import { Hotel, HotelSchema } from '../hotel/schemas/hotel.schema';
 import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { OrderEventsService } from './order-events.service';
+import { OrderValidationService } from './services/order-validation.service';
+import { OrderAuthorizationService } from './services/order-authorization.service';
+import { OrderHelperService } from './services/order-helper.service';
 
 @Module({
   imports: [
@@ -15,7 +18,13 @@ import { OrderEventsService } from './order-events.service';
       { name: Hotel.name, schema: HotelSchema },
     ]),
   ],
-  providers: [OrderService, OrderEventsService],
+  providers: [
+    OrderService,
+    OrderEventsService,
+    OrderValidationService,
+    OrderAuthorizationService,
+    OrderHelperService,
+  ],
   controllers: [OrderController],
 })
 export class OrderModule {}

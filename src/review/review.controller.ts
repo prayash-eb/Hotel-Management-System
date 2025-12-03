@@ -6,6 +6,7 @@ import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/role.decorator';
 import { UserRole, type UserDocument } from '../user/schema/user.schema';
 import { GetUser } from '../auth/decorators/get-user.decorator';
+import { ParseObjectIdPipe } from '@nestjs/mongoose';
 
 @Controller('reviews')
 export class ReviewController {
@@ -20,7 +21,7 @@ export class ReviewController {
 
   @Get('hotel/:hotelId')
   getHotelReviews(
-    @Param('hotelId') hotelId: string,
+    @Param('hotelId', ParseObjectIdPipe) hotelId: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ) {

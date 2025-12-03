@@ -2,7 +2,7 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nes
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { AppLoggerService } from '../logging/logger.service';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -14,36 +14,54 @@ export class LoggingInterceptor implements NestInterceptor {
     }
 
     const httpContext = context.switchToHttp();
-    const request = httpContext.getRequest<Request & { requestId?: string }>();
-    const response = httpContext.getResponse();
-    const { method, url } = request;
+    const request = httpContext.getRequest<Request & { requestId?: string; user?: any }>();
+    const response = httpContext.getResponse<Response>();
+    const { method, url, ip, headers } = request;
     const requestId = request?.requestId;
+    const userAgent = headers['user-agent'];
+    const userId = request.user?._id || request.user?.id;
     const startedAt = Date.now();
 
     return next.handle().pipe(
       tap({
         next: () => {
-          this.logger.log(
+          const durationMs = Date.now() - startedAt;
+          const statusCode = response?.statusCode;
+          const logLevel = statusCode >= 400 ? 'warn' : 'log';
+
+          this.logger[logLevel](
             {
+              type: 'http',
               message: 'HTTP request completed',
               method,
               url,
-              statusCode: response?.statusCode,
-              durationMs: Date.now() - startedAt,
+              statusCode,
+              durationMs,
               requestId,
+              userId,
+              ip,
+              userAgent,
             },
             'HTTP',
           );
         },
         error: (err) => {
+          const durationMs = Date.now() - startedAt;
+          
           this.logger.error(
             {
+              type: 'http',
               message: 'HTTP request failed',
               method,
               url,
-              statusCode: response?.statusCode,
-              durationMs: Date.now() - startedAt,
+              statusCode: err?.status || response?.statusCode || 500,
+              durationMs,
               requestId,
+              userId,
+              ip,
+              userAgent,
+              errorName: err?.name,
+              errorMessage: err?.message,
             },
             err?.stack,
             'HTTP',

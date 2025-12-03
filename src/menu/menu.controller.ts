@@ -22,28 +22,24 @@ import { ParseObjectIdPipe } from '@nestjs/mongoose';
 import { UpdateMenuItemDTO } from './dto/update-menu-item.dto';
 import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
 import { FileInterceptor } from '@nestjs/platform-express';
-import {
-  CreateCategoryArrayDTO,
-  UpdateCategoryDTO,
-} from './dto/category.dto';
-
+import { CreateCategoryArrayDTO, UpdateCategoryDTO } from './dto/category.dto';
+import { MenuCategoryService } from './services/menu-category.service';
+import { MenuItemService } from './services/menu-item.service';
 
 @Controller('menu')
 export class MenuController {
-  constructor(private readonly menuService: MenuService) { }
+  constructor(
+    private readonly menuService: MenuService,
+    private readonly categoryService: MenuCategoryService,
+    private readonly itemService: MenuItemService,
+  ) {}
 
   // create menu for a hotel
   @Post()
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  create(
-    @GetUser() user: UserDocument,
-    @Body() createMenuDto: CreateMenuDTO,
-  ) {
-    return this.menuService.create(
-      user._id.toHexString(),
-      createMenuDto,
-    );
+  create(@GetUser() user: UserDocument, @Body() createMenuDto: CreateMenuDTO) {
+    return this.menuService.create(user._id, createMenuDto);
   }
 
   @Patch('/hotel/:hotelId/activate/:menuId')
@@ -69,7 +65,6 @@ export class MenuController {
     return menus;
   }
 
-
   @Post(':menuId/category/:categoryId/item/:itemId/image')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
@@ -81,13 +76,7 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @UploadedFile(FileValidationPipe) file: Express.Multer.File,
   ) {
-    return this.menuService.uploadMenuItemImage(
-      menuId,
-      categoryId,
-      itemId,
-      user._id.toHexString(),
-      file,
-    );
+    return this.itemService.uploadMenuItemImage(menuId, categoryId, itemId, user._id, file);
   }
 
   @Delete(':menuId/category/:categoryId/item/:itemId/image')
@@ -100,13 +89,7 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body('imageUrl') imageUrl: string,
   ) {
-    return this.menuService.removeMenuItemImage(
-      menuId,
-      categoryId,
-      itemId,
-      user._id.toHexString(),
-      imageUrl,
-    );
+    return this.itemService.removeMenuItemImage(menuId, categoryId, itemId, user._id, imageUrl);
   }
 
   @Post(':menuId/category')
@@ -117,17 +100,13 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() createCategoryDtoArray: CreateCategoryArrayDTO,
   ) {
-    return this.menuService.addCategory(
-      menuId,
-      user._id.toHexString(),
-      createCategoryDtoArray.categories,
-    );
+    return this.categoryService.addCategory(menuId, user._id, createCategoryDtoArray.categories);
   }
 
-  @Get("/:menuId/category")
+  @Get('/:menuId/category')
   @UseGuards(JwtAccessGuard)
-  getCategory(@Param("menuId", ParseObjectIdPipe) menuId: string) {
-    return this.menuService.getCategories(menuId)
+  getCategory(@Param('menuId', ParseObjectIdPipe) menuId: string) {
+    return this.categoryService.getCategories(menuId);
   }
 
   @Patch(':menuId/category/:categoryId')
@@ -139,12 +118,7 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() updateCategoryDto: UpdateCategoryDTO,
   ) {
-    return this.menuService.updateCategory(
-      menuId,
-      categoryId,
-      user._id.toHexString(),
-      updateCategoryDto,
-    );
+    return this.categoryService.updateCategory(menuId, categoryId, user._id, updateCategoryDto);
   }
 
   @Delete(':menuId/category/:categoryId')
@@ -155,11 +129,7 @@ export class MenuController {
     @Param('categoryId', ParseObjectIdPipe) categoryId: string,
     @GetUser() user: UserDocument,
   ) {
-    return this.menuService.removeCategory(
-      menuId,
-      categoryId,
-      user._id.toHexString(),
-    );
+    return this.categoryService.removeCategory(menuId, categoryId, user._id);
   }
 
   @Post(':menuId/category/:categoryId/item')
@@ -171,12 +141,7 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() menuItemDto: MenuItemArrayDTO,
   ) {
-    return this.menuService.addMenuItem(
-      menuId,
-      categoryId,
-      user._id.toHexString(),
-      menuItemDto,
-    );
+    return this.itemService.addMenuItem(menuId, categoryId, user._id, menuItemDto);
   }
 
   @Get(':menuId/category/:categoryId/item')
@@ -187,14 +152,8 @@ export class MenuController {
     @Param('categoryId', ParseObjectIdPipe) categoryId: string,
     @GetUser() user: UserDocument,
   ) {
-
-    return this.menuService.getMenuItems(
-      menuId,
-      categoryId,
-      user._id.toHexString(),
-    );
+    return this.itemService.getMenuItems(menuId, categoryId, user._id);
   }
-
 
   @Patch(':menuId/category/:categoryId/item/:itemId')
   @Roles(UserRole.HOTEL_OWNER)
@@ -206,15 +165,8 @@ export class MenuController {
     @GetUser() user: UserDocument,
     @Body() updateMenuItemDto: UpdateMenuItemDTO,
   ) {
-    return this.menuService.updateMenuItem(
-      menuId,
-      categoryId,
-      itemId,
-      user._id.toHexString(),
-      updateMenuItemDto,
-    );
+    return this.itemService.updateMenuItem(menuId, categoryId, itemId, user._id, updateMenuItemDto);
   }
-
 
   @Delete(':menuId/category/:categoryId/item/:itemId')
   @Roles(UserRole.HOTEL_OWNER)
@@ -225,30 +177,15 @@ export class MenuController {
     @Param('itemId', ParseObjectIdPipe) itemId: string,
     @GetUser() user: UserDocument,
   ) {
-    return this.menuService.removeMenuItem(
-      menuId,
-      categoryId,
-      itemId,
-      user._id.toHexString(),
-    );
-  }
-
-  // get menu by menuId
-  @Get(':menuId')
-  getMenu(@Param('menuId', ParseObjectIdPipe) menuId: string) {
-    return this.menuService.findOne(menuId);
+    return this.itemService.removeMenuItem(menuId, categoryId, itemId, user._id);
   }
 
   @Delete(':hotelId')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  removeMenu(
-    @Param('hotelId', ParseObjectIdPipe) hotelId: string,
-    @GetUser() user: UserDocument,
-  ) {
+  removeMenu(@Param('hotelId', ParseObjectIdPipe) hotelId: string, @GetUser() user: UserDocument) {
     return this.menuService.remove(hotelId, user._id.toHexString());
   }
-
 
   @Patch('/hotel/:hotelId')
   @Roles(UserRole.HOTEL_OWNER)
