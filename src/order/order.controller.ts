@@ -8,12 +8,12 @@ import { Roles } from '../auth/decorators/role.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { type UserDocument, UserRole } from '../user/schema/user.schema';
 import { ParseObjectIdPipe } from '@nestjs/mongoose';
-import { Observable } from 'rxjs';
+import { from, mergeAll, Observable } from 'rxjs';
 import { MessageEvent } from '@nestjs/common';
 
-@Controller('orders')
+@Controller('order')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   @Post()
   @Roles(UserRole.CUSTOMER)
@@ -52,9 +52,12 @@ export class OrderController {
   @Sse(':id/events')
   @UseGuards(JwtAccessGuard)
   streamOrder(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseObjectIdPipe) orderId: string,
     @GetUser() user: UserDocument,
-  ): Promise<Observable<MessageEvent>> {
-    return this.orderService.streamOrder(id, user);
+  ): Observable<MessageEvent> {
+    return from(this.orderService.streamOrder(orderId, user)).pipe(
+      mergeAll() // unwrap the inner Observable
+    );
   }
+
 }

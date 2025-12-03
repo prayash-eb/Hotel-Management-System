@@ -24,10 +24,9 @@ import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   CreateCategoryArrayDTO,
-  CreateCategoryDTO,
   UpdateCategoryDTO,
 } from './dto/category.dto';
-import { MenuItemDTO } from './dto/create-menu.dto';
+
 
 @Controller('menu')
 export class MenuController {
@@ -47,13 +46,13 @@ export class MenuController {
     );
   }
 
-  @Get('/hotel/:hotelId/activate/:menuId')
+  @Patch('/hotel/:hotelId/activate/:menuId')
+  @Roles(UserRole.HOTEL_OWNER)
   async activateMenu(
     @Param('hotelId', ParseObjectIdPipe) hotelId: string,
     @Param('menuId', ParseObjectIdPipe) menuId: string,
   ) {
-    const updatedMenu = await this.menuService.activateMenu(hotelId, menuId);
-    return updatedMenu
+    return await this.menuService.activateMenu(hotelId, menuId);
   }
 
   // get active menu for a hotel
@@ -128,7 +127,7 @@ export class MenuController {
   @Get("/:menuId/category")
   @UseGuards(JwtAccessGuard)
   getCategory(@Param("menuId", ParseObjectIdPipe) menuId: string) {
-    return this.menuService.getAllCategories(menuId)
+    return this.menuService.getCategories(menuId)
   }
 
   @Patch(':menuId/category/:categoryId')
@@ -183,13 +182,13 @@ export class MenuController {
   @Get(':menuId/category/:categoryId/item')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  getMenuCategoryItems(
+  getMenuItems(
     @Param('menuId', ParseObjectIdPipe) menuId: string,
     @Param('categoryId', ParseObjectIdPipe) categoryId: string,
     @GetUser() user: UserDocument,
   ) {
 
-    return this.menuService.getCategoryItems(
+    return this.menuService.getMenuItems(
       menuId,
       categoryId,
       user._id.toHexString(),
@@ -233,13 +232,6 @@ export class MenuController {
       user._id.toHexString(),
     );
   }
-
-  // get food categoties of a menu
-  @Get(':menuId/categories')
-  getAllCategories(@Param('menuId', ParseObjectIdPipe) menuId: string) {
-    return this.menuService.getAllCategories(menuId);
-  }
-
 
   // get menu by menuId
   @Get(':menuId')

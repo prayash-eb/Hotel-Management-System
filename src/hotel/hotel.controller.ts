@@ -59,7 +59,7 @@ export class HotelController {
   @Patch(':id/activate')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
-  async activate(@Param('id') hotelId: string, @GetUser() user: UserDocument) {
+  async activate(@Param('id', ParseObjectIdPipe) hotelId: string, @GetUser() user: UserDocument) {
     return await this.hotelService.activateHotel(hotelId, user._id.toHexString());
   }
 
@@ -96,7 +96,7 @@ export class HotelController {
   ) {
     return await this.hotelService.uploadMedias(hotelId, user._id.toHexString(), files);
   }
-  
+
   @Delete(":id/images")
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)

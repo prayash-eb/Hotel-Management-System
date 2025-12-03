@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateHotelDTO } from './dto/create-hotel.dto';
 import { UpdateHotelDTO } from './dto/update-hotel.dto';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Hotel } from './schemas/hotel.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { CloudinaryService } from '../common/cloudinary/cloudinary.service';
@@ -20,7 +20,7 @@ export class HotelService {
   async create(ownerId: string, createHotelDto: CreateHotelDTO) {
     const { address, ...rest } = createHotelDto;
     const hotelData: any = {
-      ownerId,
+      ownerId: new Types.ObjectId(ownerId),
       ...rest,
     };
 
@@ -100,7 +100,7 @@ export class HotelService {
 
   async findMyHotels(ownerId: string) {
     return await this.hotelModel.find({
-      ownerId
+      ownerId: new Types.ObjectId(ownerId)
     })
   }
 
@@ -116,7 +116,7 @@ export class HotelService {
 
   async activateHotel(hotelId: string, ownerId: string) {
     const hotel = await this.hotelModel.findOneAndUpdate(
-      { _id: hotelId, ownerId },
+      { _id: hotelId, ownerId: new Types.ObjectId(ownerId) },
       { $set: { isActive: true } },
       { new: true }
     );

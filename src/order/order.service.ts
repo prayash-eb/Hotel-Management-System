@@ -16,28 +16,28 @@ export class OrderService {
     @InjectModel(Menu.name) private readonly menuModel: Model<MenuDocument>,
     @InjectModel(Hotel.name) private readonly hotelModel: Model<HotelDocument>,
     private readonly orderEvents: OrderEventsService,
-  ) {}
+  ) { }
 
   async createOrder(user: UserDocument, dto: CreateOrderDTO) {
-    const activeMenu = await this.menuModel.findOne({ hotelId: dto.hotelId, isActive: true });
+    const activeMenu = await this.menuModel.findOne({ hotelId: new Types.ObjectId(dto.hotelId), isActive: true });
     if (!activeMenu) {
       throw new NotFoundException('Active menu not found for the selected hotel');
     }
 
     const normalizedItems = dto.items.map((item) => {
-      if (!Types.ObjectId.isValid(item.menuItemId)) {
-        throw new BadRequestException(`Invalid menu item id: ${item.menuItemId}`);
+      if (!Types.ObjectId.isValid(item.id)) {
+        throw new BadRequestException(`Invalid menu item id: ${item.id}`);
       }
 
-      const menuItem = this.findMenuItem(activeMenu, item.menuItemId);
+      const menuItem = this.findMenuItem(activeMenu, item.id);
       if (!menuItem || !menuItem.isAvailable) {
-        throw new BadRequestException(`Menu item ${item.menuItemId} is unavailable`);
+        throw new BadRequestException(`Menu item ${item.id} is unavailable`);
       }
 
       const lineTotal = menuItem.price * item.quantity;
-      const menuItemObjectId = new Types.ObjectId(item.menuItemId);
+      const menuItemObjectId = new Types.ObjectId(item.id);
       return {
-        menuItemId: menuItemObjectId,
+        id: menuItemObjectId,
         name: menuItem.name,
         description: menuItem.description,
         unitPrice: menuItem.price,
@@ -69,7 +69,6 @@ export class OrderService {
       customerId: user._id,
       customerName: user.name,
       customerPhone: dto.customerPhone,
-      orderNumber: this.generateOrderNumber(),
       items: normalizedItems,
       subtotal,
       totalAmount,
@@ -77,7 +76,6 @@ export class OrderService {
       statusTimeline,
       fulfillmentType,
       deliveryAddress,
-      specialInstructions: dto.specialInstructions,
       paymentStatus: PaymentStatus.PENDING,
     });
 
@@ -93,7 +91,8 @@ export class OrderService {
   }
 
   async getOrderById(orderId: string, user: UserDocument) {
-    const order = await this.orderModel.findById(orderId);
+    const orderObjectId = new Types.ObjectId(orderId)
+    const order = await this.orderModel.findById(orderObjectId);
     if (!order) {
       throw new NotFoundException('Order not found');
     }
@@ -138,7 +137,8 @@ export class OrderService {
 
   async streamOrder(orderId: string, user: UserDocument) {
     const order = await this.getOrderById(orderId, user);
-    return this.orderEvents.getStream(orderId, this.buildEventPayload(order, 'snapshot'));
+    const stream = this.orderEvents.getStream(orderId, this.buildEventPayload(order, 'snapshot'));
+    return stream
   }
 
   private async canViewOrder(order: OrderDocument, user: UserDocument) {
@@ -189,15 +189,11 @@ export class OrderService {
       instructions: address.instructions,
       location: address.coordinates
         ? {
-            type: 'Point' as const,
-            coordinates: address.coordinates,
-          }
+          type: 'Point' as const,
+          coordinates: address.coordinates,
+        }
         : undefined,
     };
-  }
-
-  private generateOrderNumber() {
-    return `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   }
 
   private buildEventPayload(order: OrderDocument, type: string) {

@@ -13,7 +13,7 @@ import {
 export class OrderItemDTO {
   @IsNotEmpty()
   @IsString()
-  menuItemId: string;
+  id: string;
 
   @IsPositive()
   quantity: number;
@@ -62,10 +62,6 @@ export class CreateOrderDTO {
   @ValidateNested()
   @Type(() => DeliveryAddressDTO)
   deliveryAddress?: DeliveryAddressDTO;
-
-  @IsOptional()
-  @IsString()
-  specialInstructions?: string;
 
   @IsNotEmpty()
   @IsString()

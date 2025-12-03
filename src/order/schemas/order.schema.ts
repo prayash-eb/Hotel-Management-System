@@ -21,7 +21,8 @@ export enum PaymentStatus {
 @Schema({ _id: false })
 export class OrderItem {
   @Prop({ type: Types.ObjectId, required: true })
-  menuItemId: Types.ObjectId;
+
+  id: Types.ObjectId;
 
   @Prop({ required: true })
   name: string;
@@ -68,9 +69,6 @@ export class DeliveryAddress {
   @Prop({ required: true })
   city: string;
 
-  @Prop()
-  instructions?: string;
-
   @Prop({ type: {
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: undefined }
@@ -97,9 +95,6 @@ export class Order {
   @Prop({ required: true })
   customerPhone: string;
 
-  @Prop({ required: true })
-  orderNumber: string;
-
   @Prop({ type: [OrderItem], default: [] })
   items: OrderItem[];
 
@@ -108,9 +103,6 @@ export class Order {
 
   @Prop({ required: true, min: 0 })
   totalAmount: number;
-
-  @Prop({ default: 'USD' })
-  currency: string;
 
   @Prop({ enum: OrderStatus, default: OrderStatus.PENDING })
   status: OrderStatus;
@@ -133,12 +125,9 @@ export class Order {
   @Prop()
   estimatedDeliveryTime?: Date;
 
-  @Prop()
-  specialInstructions?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
 
-OrderSchema.index({ orderNumber: 1 }, { unique: true });
 OrderSchema.index({ hotelId: 1, status: 1 });
 OrderSchema.index({ customerId: 1, createdAt: -1 });
