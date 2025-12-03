@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString, Length, Min, MinLength, ValidateNested } from 'class-validator';
 
 export class MenuItemDTO {
     @IsString()
@@ -19,8 +19,9 @@ export class MenuItemDTO {
     @IsOptional()
     images?: string[];
 
-    @IsEnum(['veg', 'non-veg', 'vegan'])
-    type: 'veg' | 'non-veg' | 'vegan';
+    @IsEnum(['veg', 'non-veg', 'vegan'],{ message: 'type must be veg, non-veg, or vegan' })
+    @IsOptional()
+    type?: string;
 
     @IsBoolean()
     @IsOptional()
@@ -35,15 +36,20 @@ export class MenuCategoryDTO {
     @IsString()
     @IsOptional()
     @IsNotEmpty()
-    description?:string;
+    description?: string;
 
     @IsArray()
+    @IsOptional()
     @ValidateNested({ each: true })
     @Type(() => MenuItemDTO)
     items: MenuItemDTO[];
 }
 
 export class CreateMenuDTO {
+
+    @IsMongoId()
+    hotelId: string
+
     @IsString()
     @IsNotEmpty()
     name: string;
@@ -57,4 +63,12 @@ export class CreateMenuDTO {
     @Type(() => MenuCategoryDTO)
     @IsOptional()
     categories?: MenuCategoryDTO[];
+}
+
+
+export class MenuItemArrayDTO {
+    @ValidateNested()
+    @IsNotEmpty()
+    @Type(() => MenuItemDTO)
+    items: MenuItemDTO[]
 }

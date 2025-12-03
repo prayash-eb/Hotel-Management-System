@@ -11,7 +11,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { MenuService } from './menu.service';
-import { CreateMenuDTO } from './dto/create-menu.dto';
+import { CreateMenuDTO, MenuItemArrayDTO } from './dto/create-menu.dto';
 import { UpdateMenuDTO } from './dto/update-menu.dto';
 import { JwtAccessGuard } from '../auth/guards/jwt.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
@@ -31,28 +31,20 @@ import { MenuItemDTO } from './dto/create-menu.dto';
 
 @Controller('menu')
 export class MenuController {
-  constructor(private readonly menuService: MenuService) {}
+  constructor(private readonly menuService: MenuService) { }
 
   // create menu for a hotel
-  @Post(':hotelId')
+  @Post()
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
   create(
-    @Param('hotelId', ParseObjectIdPipe) hotelId: string,
     @GetUser() user: UserDocument,
     @Body() createMenuDto: CreateMenuDTO,
   ) {
     return this.menuService.create(
-      hotelId,
       user._id.toHexString(),
       createMenuDto,
     );
-  }
-
-  // get menu by menuId
-  @Get(':menuId')
-  findOne(@Param('menuId', ParseObjectIdPipe) menuId: string) {
-    return this.menuService.findOne(menuId);
   }
 
   @Get('/hotel/:hotelId/activate/:menuId')
@@ -61,8 +53,13 @@ export class MenuController {
     @Param('menuId', ParseObjectIdPipe) menuId: string,
   ) {
     const updatedMenu = await this.menuService.activateMenu(hotelId, menuId);
-    console.log(updatedMenu);
     return updatedMenu
+  }
+
+  // get active menu for a hotel
+  @Get('/hotel/:hotelId/active')
+  getActiveMenu(@Param('hotelId', ParseObjectIdPipe) hotelId: string) {
+    return this.menuService.getActiveMenu(hotelId);
   }
 
   // get all menues of a specific hotel
@@ -73,51 +70,6 @@ export class MenuController {
     return menus;
   }
 
-  // get active menu for a hotel
-  @Get('/hotel/:hotelId/active')
-  getActiveMenu(@Param('hotelId', ParseObjectIdPipe) hotelId: string) {
-    return this.menuService.getActiveMenu(hotelId);
-  }
-
-  @Patch(':id')
-  @Roles(UserRole.HOTEL_OWNER)
-  @UseGuards(JwtAccessGuard, RoleGuard)
-  update(
-    @Param('id', ParseObjectIdPipe) id: string,
-    @GetUser() user: UserDocument,
-    @Body() updateMenuDto: UpdateMenuDTO,
-  ) {
-    return this.menuService.update(id, user._id.toHexString(), updateMenuDto);
-  }
-
-  @Delete(':id')
-  @Roles(UserRole.HOTEL_OWNER)
-  @UseGuards(JwtAccessGuard, RoleGuard)
-  remove(
-    @Param('id', ParseObjectIdPipe) id: string,
-    @GetUser() user: UserDocument,
-  ) {
-    return this.menuService.remove(id, user._id.toHexString());
-  }
-
-  @Patch(':menuId/category/:categoryId/item/:itemId')
-  @Roles(UserRole.HOTEL_OWNER)
-  @UseGuards(JwtAccessGuard, RoleGuard)
-  updateMenuItem(
-    @Param('menuId', ParseObjectIdPipe) menuId: string,
-    @Param('categoryId', ParseObjectIdPipe) categoryId: string,
-    @Param('itemId', ParseObjectIdPipe) itemId: string,
-    @GetUser() user: UserDocument,
-    @Body() updateMenuItemDto: UpdateMenuItemDTO,
-  ) {
-    return this.menuService.updateMenuItem(
-      menuId,
-      categoryId,
-      itemId,
-      user._id.toHexString(),
-      updateMenuItemDto,
-    );
-  }
 
   @Post(':menuId/category/:categoryId/item/:itemId/image')
   @Roles(UserRole.HOTEL_OWNER)
@@ -173,6 +125,12 @@ export class MenuController {
     );
   }
 
+  @Get("/:menuId/category")
+  @UseGuards(JwtAccessGuard)
+  getCategory(@Param("menuId", ParseObjectIdPipe) menuId: string) {
+    return this.menuService.getAllCategories(menuId)
+  }
+
   @Patch(':menuId/category/:categoryId')
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
@@ -212,7 +170,7 @@ export class MenuController {
     @Param('menuId', ParseObjectIdPipe) menuId: string,
     @Param('categoryId', ParseObjectIdPipe) categoryId: string,
     @GetUser() user: UserDocument,
-    @Body() menuItemDto: MenuItemDTO,
+    @Body() menuItemDto: MenuItemArrayDTO,
   ) {
     return this.menuService.addMenuItem(
       menuId,
@@ -221,6 +179,43 @@ export class MenuController {
       menuItemDto,
     );
   }
+
+  @Get(':menuId/category/:categoryId/item')
+  @Roles(UserRole.HOTEL_OWNER)
+  @UseGuards(JwtAccessGuard, RoleGuard)
+  getMenuCategoryItems(
+    @Param('menuId', ParseObjectIdPipe) menuId: string,
+    @Param('categoryId', ParseObjectIdPipe) categoryId: string,
+    @GetUser() user: UserDocument,
+  ) {
+
+    return this.menuService.getCategoryItems(
+      menuId,
+      categoryId,
+      user._id.toHexString(),
+    );
+  }
+
+
+  @Patch(':menuId/category/:categoryId/item/:itemId')
+  @Roles(UserRole.HOTEL_OWNER)
+  @UseGuards(JwtAccessGuard, RoleGuard)
+  updateMenuItem(
+    @Param('menuId', ParseObjectIdPipe) menuId: string,
+    @Param('categoryId', ParseObjectIdPipe) categoryId: string,
+    @Param('itemId', ParseObjectIdPipe) itemId: string,
+    @GetUser() user: UserDocument,
+    @Body() updateMenuItemDto: UpdateMenuItemDTO,
+  ) {
+    return this.menuService.updateMenuItem(
+      menuId,
+      categoryId,
+      itemId,
+      user._id.toHexString(),
+      updateMenuItemDto,
+    );
+  }
+
 
   @Delete(':menuId/category/:categoryId/item/:itemId')
   @Roles(UserRole.HOTEL_OWNER)
@@ -239,8 +234,38 @@ export class MenuController {
     );
   }
 
+  // get food categoties of a menu
   @Get(':menuId/categories')
   getAllCategories(@Param('menuId', ParseObjectIdPipe) menuId: string) {
     return this.menuService.getAllCategories(menuId);
+  }
+
+
+  // get menu by menuId
+  @Get(':menuId')
+  getMenu(@Param('menuId', ParseObjectIdPipe) menuId: string) {
+    return this.menuService.findOne(menuId);
+  }
+
+  @Delete(':hotelId')
+  @Roles(UserRole.HOTEL_OWNER)
+  @UseGuards(JwtAccessGuard, RoleGuard)
+  removeMenu(
+    @Param('hotelId', ParseObjectIdPipe) hotelId: string,
+    @GetUser() user: UserDocument,
+  ) {
+    return this.menuService.remove(hotelId, user._id.toHexString());
+  }
+
+
+  @Patch('/hotel/:hotelId')
+  @Roles(UserRole.HOTEL_OWNER)
+  @UseGuards(JwtAccessGuard, RoleGuard)
+  updateMenu(
+    @Param('hotelId', ParseObjectIdPipe) hotelId: string,
+    @GetUser() user: UserDocument,
+    @Body() updateMenuDto: UpdateMenuDTO,
+  ) {
+    return this.menuService.update(hotelId, user._id.toHexString(), updateMenuDto);
   }
 }

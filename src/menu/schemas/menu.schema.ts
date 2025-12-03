@@ -3,7 +3,6 @@ import { Document, Types } from 'mongoose';
 
 export type MenuDocument = Menu & Document;
 
-
 @Schema({ _id: true })
 export class Media {
     @Prop({ required: true })
@@ -28,7 +27,7 @@ export class MenuItem {
     @Prop({ type: [MediaSchema], default: [] })
     media: Media[];
 
-    @Prop({ required: true, enum: ['veg', 'non-veg', 'vegan'], default: 'veg' })
+    @Prop({ type: String, enum: ['veg', 'non-veg', 'vegan'] })
     type: string;
 
     @Prop({ default: true })
@@ -38,7 +37,7 @@ export class MenuItem {
 export const MenuItemSchema = SchemaFactory.createForClass(MenuItem);
 
 @Schema({ _id: true })
-export class MenuCategory {
+export class MenuCategory extends Document {
     @Prop({ required: true })
     name: string;
 

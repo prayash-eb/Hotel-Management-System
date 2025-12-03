@@ -1,9 +1,9 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateMenuDTO } from './create-menu.dto';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class UpdateMenuDTO extends PartialType(CreateMenuDTO) {
     @IsBoolean()
     @IsOptional()
-    isActive?: boolean;
+    isActive?: boolean
 }

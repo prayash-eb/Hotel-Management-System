@@ -243,5 +243,4 @@ export class HotelService {
     await hotel.save();
     return hotel;
   }
-
 }

@@ -2,11 +2,12 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Menu, MenuDocument } from './schemas/menu.schema';
-import { CreateMenuDTO, MenuItemDTO } from './dto/create-menu.dto';
+import { CreateMenuDTO, MenuItemArrayDTO, MenuItemDTO } from './dto/create-menu.dto';
 import { UpdateMenuDTO } from './dto/update-menu.dto';
 import { Hotel, HotelDocument } from '../hotel/schemas/hotel.schema';
 import { CloudinaryService } from '../common/cloudinary/cloudinary.service';
@@ -23,18 +24,18 @@ export class MenuService {
     @InjectModel(Menu.name) private menuModel: Model<MenuDocument>,
     @InjectModel(Hotel.name) private hotelModel: Model<HotelDocument>,
     private readonly cloudinaryService: CloudinaryService,
-  ) {}
+  ) { }
 
-  async create(hotelId: string, ownerId: string, createMenuDto: CreateMenuDTO) {
+  async create(ownerId: string, createMenuDto: CreateMenuDTO) {
     // Verify hotel ownership
-    const hotel = await this.hotelModel.findOne({ _id: hotelId, ownerId });
+    const hotel = await this.hotelModel.findOne({ _id: new Types.ObjectId(createMenuDto.hotelId), ownerId });
     if (!hotel) {
       throw new NotFoundException('Hotel not found or you are not the owner');
     }
 
     const menu = new this.menuModel({
-      hotelId: new Types.ObjectId(hotelId),
       ...createMenuDto,
+      hotelId: new Types.ObjectId(createMenuDto.hotelId)
     });
 
     return await menu.save();
@@ -52,8 +53,8 @@ export class MenuService {
 
   async activateMenu(hotelId: string, menuId: string) {
     const hotel = await this.hotelModel.findById(hotelId);
-    if(!hotel){
-         throw new NotFoundException('Hotel with given id not found');
+    if (!hotel) {
+      throw new NotFoundException('Hotel with given id not found');
     }
     const menu = await this.menuModel.findById(menuId);
     if (!menu) {
@@ -144,43 +145,6 @@ export class MenuService {
     return menu;
   }
 
-  async updateMenuItem(
-    menuId: string,
-    categoryId: string,
-    itemId: string,
-    ownerId: string,
-    updateDto: UpdateMenuItemDTO,
-  ) {
-    const menu = await this.menuModel.findById(menuId);
-    if (!menu) throw new NotFoundException('Menu not found');
-
-    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
-    if (!hotel)
-      throw new NotFoundException(
-        'You are not the owner of the hotel this menu belongs to',
-      );
-
-    const updateFields: any = {};
-    for (const key in updateDto) {
-      updateFields[`categories.$[cat].items.$[item].${key}`] = updateDto[key];
-    }
-
-    const updatedMenu = await this.menuModel.findOneAndUpdate(
-      { _id: menuId },
-      { $set: updateFields },
-      {
-        arrayFilters: [
-          { 'cat._id': new Types.ObjectId(categoryId) },
-          { 'item._id': new Types.ObjectId(itemId) },
-        ],
-        new: true,
-      },
-    );
-
-    if (!updatedMenu) throw new NotFoundException('Menu item not found');
-    return updatedMenu;
-  }
-
   async uploadMenuItemImage(
     menuId: string,
     categoryId: string,
@@ -264,7 +228,7 @@ export class MenuService {
 
     const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
     if (!hotel)
-      throw new NotFoundException(
+      throw new ForbiddenException(
         'You are not the owner of the hotel this menu belongs to',
       );
 
@@ -279,6 +243,18 @@ export class MenuService {
       },
       { new: true },
     );
+  }
+
+  async getCategories(menuId: string, ownerId: string) {
+    const menu = await this.menuModel.findById(menuId);
+    if (!menu) throw new NotFoundException('Menu not found');
+
+    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
+    if (!hotel)
+      throw new ForbiddenException(
+        'You are not the owner of the hotel this menu belongs to'
+      );
+    return menu.categories;
   }
 
   async updateCategory(
@@ -328,7 +304,7 @@ export class MenuService {
     menuId: string,
     categoryId: string,
     ownerId: string,
-    menuItemDto: MenuItemDTO,
+    menuItemDto: MenuItemArrayDTO,
   ) {
     const menu = await this.menuModel.findById(menuId);
     if (!menu) throw new NotFoundException('Menu not found');
@@ -339,15 +315,66 @@ export class MenuService {
         'You are not the owner of the hotel this menu belongs to',
       );
 
+      console.log(menuItemDto);
+
     const updatedMenu = await this.menuModel.findOneAndUpdate(
       { _id: menuId, 'categories._id': categoryId },
-      { $push: { 'categories.$.items': menuItemDto } },
+      { $push: { 'categories.$.items': { $each: menuItemDto.items } } },
       { new: true },
     );
 
     if (!updatedMenu) throw new NotFoundException('Category not found');
     return updatedMenu;
   }
+
+  async getCategoryItems(menuId: string, categoryId: string, ownerId: string) {
+
+    const menu = await this.menuModel.findById(menuId);
+    if (!menu) {
+      throw new NotFoundException("Menu not found")
+    }
+    const category = menu.categories.find((cat) => cat._id.equals(categoryId))
+    return category?.items ? category.items : []
+  }
+
+
+  async updateMenuItem(
+    menuId: string,
+    categoryId: string,
+    itemId: string,
+    ownerId: string,
+    updateDto: UpdateMenuItemDTO,
+  ) {
+    const menu = await this.menuModel.findById(menuId);
+    if (!menu) throw new NotFoundException('Menu not found');
+
+    const hotel = await this.hotelModel.findOne({ _id: menu.hotelId, ownerId });
+    if (!hotel)
+      throw new NotFoundException(
+        'You are not the owner of the hotel this menu belongs to',
+      );
+
+    const updateFields: any = {};
+    for (const key in updateDto) {
+      updateFields[`categories.$[cat].items.$[item].${key}`] = updateDto[key];
+    }
+
+    const updatedMenu = await this.menuModel.findOneAndUpdate(
+      { _id: menuId },
+      { $set: updateFields },
+      {
+        arrayFilters: [
+          { 'cat._id': new Types.ObjectId(categoryId) },
+          { 'item._id': new Types.ObjectId(itemId) },
+        ],
+        new: true,
+      },
+    );
+
+    if (!updatedMenu) throw new NotFoundException('Menu item not found');
+    return updatedMenu;
+  }
+
 
   async removeMenuItem(
     menuId: string,
@@ -380,6 +407,11 @@ export class MenuService {
   async getAllCategories(menuId: string) {
     const menu = await this.menuModel.findById(menuId).select('categories');
     if (!menu) throw new NotFoundException('Menu not found');
-    return menu.categories;
+    const categoriesWithoutItems = menu.categories.map((cat) => ({
+      _id: cat._id,
+      name: cat.name,
+      link: cat.media,
+    }))
+    return categoriesWithoutItems
   }
 }

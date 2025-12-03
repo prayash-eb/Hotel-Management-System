@@ -96,8 +96,7 @@ export class HotelController {
   ) {
     return await this.hotelService.uploadMedias(hotelId, user._id.toHexString(), files);
   }
-
-
+  
   @Delete(":id/images")
   @Roles(UserRole.HOTEL_OWNER)
   @UseGuards(JwtAccessGuard, RoleGuard)
