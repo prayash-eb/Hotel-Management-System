@@ -31,25 +31,27 @@ winston.addColors(customLevels.colors);
 /**
  * Custom format to add additional metadata to logs
  */
-const customFormat = winston.format.printf(({ level, message, timestamp, context, trace, ...metadata }) => {
-  let log = `${timestamp} [${level.toUpperCase()}] [${context || 'Application'}]`;
-  
-  if (typeof message === 'object') {
-    log += ` ${JSON.stringify(message)}`;
-  } else {
-    log += ` ${message}`;
-  }
-  
-  if (Object.keys(metadata).length > 0) {
-    log += ` ${JSON.stringify(metadata)}`;
-  }
-  
-  if (trace) {
-    log += `\n${trace}`;
-  }
-  
-  return log;
-});
+const customFormat = winston.format.printf(
+  ({ level, message, timestamp, context, trace, ...metadata }) => {
+    let log = `${timestamp} [${level.toUpperCase()}] [${context || 'Application'}]`;
+
+    if (typeof message === 'object') {
+      log += ` ${JSON.stringify(message)}`;
+    } else {
+      log += ` ${message}`;
+    }
+
+    if (Object.keys(metadata).length > 0) {
+      log += ` ${JSON.stringify(metadata)}`;
+    }
+
+    if (trace) {
+      log += `\n${trace}`;
+    }
+
+    return log;
+  },
+);
 
 /**
  * Build Winston logger configuration with separate log files for different purposes
